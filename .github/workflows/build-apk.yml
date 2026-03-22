@@ -1,40 +1,58 @@
-# 导入Kivy核心组件
-from kivy.app import App
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.label import Label
-from kivy.core.window import Window
+# 工作流名称：Build Android APK
+name: Build Android APK
 
-# 设置窗口背景（可选，仅增强可视化）
-Window.clearcolor = (0.9, 0.9, 0.9, 1)
+# 构建触发条件（仅保留核心触发方式，减少冗余）
+on:
+  workflow_dispatch:  # 手动触发（最实用）
+  push:
+    branches: [ main ]  # 推送到main分支自动触发
 
-# 定义基础应用类
-class MinimalTestApp(App):
-    # 构建UI界面
-    def build(self):
-        # 创建布局容器
-        layout = BoxLayout(orientation='vertical', padding=50, spacing=20)
-        
-        # 添加标题标签
-        title_label = Label(
-            text="构建成功！",
-            font_size=40,
-            color=(0.2, 0.5, 0.8, 1)
-        )
-        
-        # 添加说明标签
-        desc_label = Label(
-            text="这是最简Kivy Demo，说明Buildozer编译流程正常",
-            font_size=20,
-            color=(0.3, 0.3, 0.3, 1)
-        )
-        
-        # 将标签添加到布局
-        layout.add_widget(title_label)
-        layout.add_widget(desc_label)
-        
-        # 返回主布局
-        return layout
+# 构建任务配置
+jobs:
+  build:
+    # 使用Ubuntu最新稳定环境
+    runs-on: ubuntu-latest
+    # 构建步骤（严格缩进，解决YAML语法错误）
+    steps:
+      # 1. 拉取仓库代码（最新版插件）
+      - uses: actions/checkout@v4
 
-# 程序入口
-if __name__ == "__main__":
-    MinimalTestApp().run()
+      # 2. 配置Python 3.8环境（适配Buildozer，已删除cache配置）
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'  # 仅保留版本号，移除cache避免依赖文件检测报错
+
+      # 3. 安装系统依赖（修复openssl缺失+简化更新+配置环境变量）
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -y  # 简化update，避免全量升级超时
+          # 新增openssl/pkg-config，解决编译依赖；保留核心构建工具
+          sudo apt-get install -y git zip unzip openjdk-17-jdk libssl-dev openssl pkg-config
+          # 强制指定Java环境，避免多JDK冲突
+          export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+          echo "JAVA_HOME=$JAVA_HOME" >> $GITHUB_ENV
+          # 手动配置openssl环境变量，让pkg-config能识别
+          export PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig
+          echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
+
+      # 4. 安装Python依赖（加重试，解决网络超时）
+      - name: Install Python dependencies with retry
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          # 重试3次+超时120秒，解决国外环境下载慢问题
+          pip install --retries 3 --timeout 120 Cython==0.29.36 buildozer==1.5.0
+
+      # 5. 构建Android APK（核心步骤）
+      - name: Build APK with Buildozer
+        run: |
+          buildozer android debug
+        continue-on-error: false  # 报错立即终止，方便定位问题
+
+      # 6. 上传APK产物（最新版插件，无deprecated警告）
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk  # 下载包名
+          path: bin/*.apk    # APK文件路径
+          if-no-files-found: error  # 无APK则报错，提示问题
