@@ -17,12 +17,11 @@ jobs:
       # 1. 拉取仓库代码（最新版插件）
       - uses: actions/checkout@v4
 
-      # 2. 配置Python 3.8环境（适配Buildozer）
+      # 2. 配置Python 3.8环境（适配Buildozer，已删除cache配置）
       - name: Set up Python 3.8
         uses: actions/setup-python@v5
         with:
-          python-version: '3.8'
-          cache: 'pip'  # 缓存pip依赖，加速构建
+          python-version: '3.8'  # 仅保留版本号，移除cache避免依赖文件检测报错
 
       # 3. 安装系统依赖（解决编译环境问题）
       - name: Install system dependencies
