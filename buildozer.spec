@@ -11,14 +11,16 @@ source.exclude_exts = spec
 source.exclude_dirs = bin, .buildozer, .git
 source.exclude_files = Makefile, .gitignore, README.md
 
-requirements = python3,kivy=2.1.0,pillow=9.2.0,pyjnius
+requirements = python3,kivy=2.1.0,pillow=9.2.0,pyjnius,openssl
 
 orientation = portrait
 fullscreen = 0
 android.api = 33
 android.sdk = 33
 android.ndk = 25b
+android.ndk_api = 33
 android.arch = arm64-v8a
+android.minapi = 21
 android.buildtools = 30.0.2
 android.accept_sdk_license = True
 android.use_aapt2 = True
