@@ -1,40 +1,55 @@
+# 工作流名称：Build Android APK
 name: Build Android APK
 
+# 构建触发条件（仅保留核心触发方式，减少冗余）
 on:
-  workflow_dispatch:  # 只允许手动触发，简单直接
+  workflow_dispatch:  # 手动触发（最实用）
   push:
-    branches: [ main ]
+    branches: [ main ]  # 推送到main分支自动触发
 
+# 构建任务配置
 jobs:
   build:
+    # 使用Ubuntu最新稳定环境
     runs-on: ubuntu-latest
+    # 构建步骤（严格缩进，解决YAML语法错误）
     steps:
+      # 1. 拉取仓库代码（最新版插件）
       - uses: actions/checkout@v4
 
-      # 1. 使用官方稳定版 Python
-      - name: Set up Python
+      # 2. 配置Python 3.8环境（适配Buildozer）
+      - name: Set up Python 3.8
         uses: actions/setup-python@v5
         with:
           python-version: '3.8'
+          cache: 'pip'  # 缓存pip依赖，加速构建
 
-      # 2. 只安装最必须的系统依赖（减少报错风险）
-- name: Install Deps
-  run: |
-    sudo apt-get update
-    sudo apt-get install -y git zip unzip openjdk-17-jdk
-    python -m pip install --upgrade pip
-    pip install --retries 3 --timeout 120 Cython==0.29.36 buildozer==1.5.0
+      # 3. 安装系统依赖（解决编译环境问题）
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update && sudo apt-get upgrade -y
+          sudo apt-get install -y git zip unzip openjdk-17-jdk
+          # 配置Java环境（Buildozer必需）
+          export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+          echo "JAVA_HOME=$JAVA_HOME" >> $GITHUB_ENV
 
-      # 3. 直接执行构建（关键步骤，保持简单）
-      - name: Build APK
+      # 4. 安装Python依赖（加重试，解决网络超时）
+      - name: Install Python dependencies with retry
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          # 重试3次+超时120秒，解决国外环境下载慢问题
+          pip install --retries 3 --timeout 120 Cython==0.29.36 buildozer==1.5.0
+
+      # 5. 构建Android APK（核心步骤）
+      - name: Build APK with Buildozer
         run: |
           buildozer android debug
-        continue-on-error: false
+        continue-on-error: false  # 报错立即终止，方便定位问题
 
-      # 4. 上传 APK（使用最新版 v4）
-      - name: Upload Artifact
+      # 6. 上传APK产物（最新版插件，无deprecated警告）
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: android-apk
-          path: bin/*.apk
-          if-no-files-found: error
+          name: android-apk  # 下载包名
+          path: bin/*.apk    # APK文件路径
+          if-no-files-found: error  # 无APK则报错，提示问题
