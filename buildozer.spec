@@ -16,10 +16,11 @@ requirements = python3,kivy=2.1.0,pillow=9.2.0,oss2=2.18.4,certifi,chardet,idna,
 orientation = portrait
 fullscreen = 0
 android.api = 33
-android.sdk = 24
+android.sdk = 33
 android.ndk = 25b
 android.arch = armeabi-v7a
-android.buildtools = 30.0.3
+android.buildtools = 30.0.2
+android.accept_sdk_license = True
 android.use_aapt2 = True
 android.permissions = INTERNET,ACCESS_NETWORK_STATE
 android.meta_data =
