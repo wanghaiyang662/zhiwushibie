@@ -27,7 +27,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update && sudo apt-get upgrade -y
-          sudo apt-get install -y git zip unzip openjdk-17-jdk
+          sudo apt-get install -y git zip unzip openjdk-17-jdk libssl-dev
           # 配置Java环境（Buildozer必需）
           export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
           echo "JAVA_HOME=$JAVA_HOME" >> $GITHUB_ENV
