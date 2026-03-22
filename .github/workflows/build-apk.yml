@@ -18,11 +18,12 @@ jobs:
           python-version: '3.8'
 
       # 2. 只安装最必须的系统依赖（减少报错风险）
-      - name: Install Deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y git zip unzip openjdk-17-jdk
-          python -m pip install --upgrade pip buildozer Cython==0.29.36
+- name: Install Deps
+  run: |
+    sudo apt-get update
+    sudo apt-get install -y git zip unzip openjdk-17-jdk
+    python -m pip install --upgrade pip
+    pip install --retries 3 --timeout 120 Cython==0.29.36 buildozer==1.5.0
 
       # 3. 直接执行构建（关键步骤，保持简单）
       - name: Build APK
