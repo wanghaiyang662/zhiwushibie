@@ -11,13 +11,13 @@ source.exclude_exts = spec
 source.exclude_dirs = bin, .buildozer, .git
 source.exclude_files = Makefile, .gitignore, README.md
 
-requirements = python3,kivy=2.1.0,pillow=9.2.0,oss2=2.18.4,certifi,chardet,idna,urllib3,requests,crcmod,pycryptodome,aliyun-python-sdk-kms,aliyun-python-sdk-core,six,jmespath,cryptography,cfi,pycparser,charset_normalizer,pyjnius
+requirements = python3,kivy=2.1.0,pillow=9.2.0,pyjnius
 
 orientation = portrait
 fullscreen = 0
 android.api = 33
 android.sdk = 33
-android.ndk = 25b
+android.ndk = 23b
 android.arch = armeabi-v7a
 android.buildtools = 30.0.2
 android.accept_sdk_license = True
