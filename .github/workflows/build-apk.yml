@@ -23,14 +23,18 @@ jobs:
         with:
           python-version: '3.8'  # 仅保留版本号，移除cache避免依赖文件检测报错
 
-      # 3. 安装系统依赖（解决编译环境问题）
+      # 3. 安装系统依赖（修复openssl缺失+简化更新+配置环境变量）
       - name: Install system dependencies
         run: |
-          sudo apt-get update && sudo apt-get upgrade -y
-          sudo apt-get install -y git zip unzip openjdk-17-jdk libssl-dev
-          # 配置Java环境（Buildozer必需）
+          sudo apt-get update -y  # 简化update，避免全量升级超时
+          # 新增openssl/pkg-config，解决编译依赖；保留核心构建工具
+          sudo apt-get install -y git zip unzip openjdk-17-jdk libssl-dev openssl pkg-config
+          # 强制指定Java环境，避免多JDK冲突
           export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
           echo "JAVA_HOME=$JAVA_HOME" >> $GITHUB_ENV
+          # 手动配置openssl环境变量，让pkg-config能识别
+          export PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig
+          echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
 
       # 4. 安装Python依赖（加重试，解决网络超时）
       - name: Install Python dependencies with retry
