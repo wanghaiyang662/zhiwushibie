@@ -1,88 +1,39 @@
-# 工作流名称：Build Android APK
 name: Build Android APK
 
-# 安全存储阿里云密钥（从GitHub Secrets读取）
-env:
-  ALIYUN_ACCESS_KEY_ID: ${{ secrets.ALIYUN_ACCESS_KEY_ID }}
-  ALIYUN_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_ACCESS_KEY_SECRET }}
-
-# 构建触发条件（解决 No event triggers 错误）
 on:
-  # 推送代码到main/master分支时自动构建
+  workflow_dispatch:  # 只允许手动触发，简单直接
   push:
-    branches: [ main, master ]
-  # 发起PR到main/master分支时自动构建
-  pull_request:
-    branches: [ main, master ]
-  # 允许手动点击触发构建（最实用）
-  workflow_dispatch:
+    branches: [ main ]
 
-# 构建任务配置
 jobs:
   build:
-    # 使用Ubuntu最新版环境
     runs-on: ubuntu-latest
-    # 步骤按顺序执行
     steps:
-      # 1. 拉取仓库代码
-      - name: Checkout code
-        uses: actions/checkout@v4  # 升级到最新版插件
+      - uses: actions/checkout@v4
 
-      # 2. 配置Python环境（适配Buildozer）
-      - name: Set up Python 3.8
+      # 1. 使用官方稳定版 Python
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.8'
-          cache: 'pip'  # 缓存依赖，加速构建
 
-      # 3. 安装系统依赖（解决Buildozer编译报错）
-      - name: Install system dependencies
+      # 2. 只安装最必须的系统依赖（减少报错风险）
+      - name: Install Deps
         run: |
-          sudo apt update && sudo apt upgrade -y
-          sudo apt install -y \
-            build-essential git unzip zip \
-            libffi-dev libssl-dev libncurses5-dev \
-            autoconf libtool pkg-config openjdk-11-jdk \
-            android-sdk-platform-tools android-sdk-build-tools
-          # 配置Java环境（Buildozer需要）
-          export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
-          echo "JAVA_HOME=$JAVA_HOME" >> $GITHUB_ENV
+          sudo apt-get update
+          sudo apt-get install -y git zip unzip openjdk-17-jdk
+          python -m pip install --upgrade pip buildozer Cython==0.29.36
 
-      # 4. 安装Python依赖（Cython + Buildozer）
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip setuptools wheel
-          pip install Cython==0.29.36  # 适配Buildozer的稳定版本
-          pip install buildozer==1.5.0  # 稳定版，减少兼容性问题
-
-      # 5. 初始化Buildozer（生成配置文件）
-      - name: Initialize Buildozer
-        run: |
-          if [ ! -f "buildozer.spec" ]; then
-            buildozer init
-          fi
-
-      # 6. 构建Android APK（核心步骤）
-      - name: Build Android APK with Buildozer
+      # 3. 直接执行构建（关键步骤，保持简单）
+      - name: Build APK
         run: |
           buildozer android debug
-        # 即使构建中出现小警告，也继续执行（避免直接失败）
         continue-on-error: false
 
-      # 7. 检查APK文件是否生成（方便排查问题）
-      - name: Check APK file
-        run: |
-          echo "=== 查看bin目录文件 ==="
-          ls -la bin/ || echo "bin目录不存在"
-          echo "=== 查找所有APK文件 ==="
-          find . -name "*.apk" -type f -ls
-
-      # 8. 上传APK到Artifacts（解决 deprecated 插件错误）
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4  # 升级到最新版插件
+      # 4. 上传 APK（使用最新版 v4）
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: android-apk  # 下载包名
-          path: |  # 匹配所有APK文件
-            bin/*.apk
-            ./*.apk
-          if-no-files-found: warn  # 没找到APK只警告，不失败
+          name: android-apk
+          path: bin/*.apk
+          if-no-files-found: error
