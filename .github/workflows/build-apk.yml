@@ -1,1 +1,66 @@
+name: Build Android APK
+env:
+  ALIYUN_ACCESS_KEY_ID: ${{ secrets.ALIYUN_ACCESS_KEY_ID }}
+  ALIYUN_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_ACCESS_KEY_SECRET }}
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
 
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.8'
+        
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y build-essential git unzip zip libffi-dev libssl-dev libncurses5-dev autoconf libtool pkg-config
+        python -m pip install --upgrade pip
+        pip install Cython
+        
+    - name: Install Buildozer
+      run: |
+        pip install buildozer
+        
+    - name: Setup Android SDK
+      run: |
+        export ANDROID_HOME=$HOME/.buildozer/android/platform
+        export PATH=$PATH:$ANDROID_HOME/tools/bin
+        export PATH=$PATH:$ANDROID_HOME/platform-tools
+        mkdir -p $ANDROID_HOME
+        cd $ANDROID_HOME
+        wget https://dl.google.com/android/repository/commandlinetools-linux-7583922_latest.zip
+        unzip commandlinetools-linux-7583922_latest.zip
+        mkdir -p cmdline-tools/latest
+        mv cmdline-tools/* $ANDROID_HOME/cmdline-tools/latest/ 2>/dev/null || true
+        rm commandlinetools-linux-7583922_latest.zip
+        
+    - name: Accept licenses
+      run: |
+        yes | $HOME/.buildozer/android/platform/cmdline-tools/latest/bin/sdkmanager --licenses || true
+        
+    - name: Build Android APK
+      run: |
+        buildozer android debug
+      continue-on-error: true
+      
+    - name: Check for APK
+      run: |
+        ls -la
+        find . -name "*.apk" -type f
+        
+    - name: Upload APK
+      uses: actions/upload-artifact@v3
+      with:
+        name: android-apk
+        path: bin/*.apk
+      continue-on-error: true
