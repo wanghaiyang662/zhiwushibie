@@ -14,12 +14,12 @@ requirements = python3,kivy==2.1.0,pillow,oss2,certifi,chardet,idna,urllib3,requ
 orientation = portrait
 fullscreen = 0
 
-# Android 核心配置（GitHub Actions 编译兼容版）
+# Android 核心配置（适配新版 Buildozer，移除弃用参数）
 android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
 android.api = 31
+android.compileSdk = 31  # 替换旧的 android.sdk，适配新版 Buildozer
 android.minapi = 21
-android.sdk = 24  # 适配 GitHub Actions 预装 SDK 版本
-android.ndk = 25b # 升级 NDK 版本，解决旧版本编译兼容问题
+android.ndk = 25b
 android.release_artifact = apk
 android.entrypoint = org.kivy.android.PythonActivity
 android.apptheme = Theme.AppCompat.Light.NoActionBar
