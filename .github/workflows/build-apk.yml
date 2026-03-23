@@ -25,7 +25,8 @@ jobs:
       uses: actions/cache@v4  # 升级到 v4，消除 Node.js 弃用警告
       with:
         path: ~/.buildozer
-        key: ${{ runner.os }}-buildozer-${{ hashFiles('**/buildozer.spec') }}
+        # 新的缓存key，清空旧的坏缓存，重新下载
+        key: ${{ runner.os }}-buildozer-${{ hashFiles('**/buildozer.spec') }}-v2
         
     - name: Install system dependencies
       run: |
