@@ -25,8 +25,8 @@ jobs:
       uses: actions/cache@v4  # 升级到 v4，消除 Node.js 弃用警告
       with:
         path: ~/.buildozer
-        # 新的缓存key，清空旧的坏缓存，重新下载
-        key: ${{ runner.os }}-buildozer-${{ hashFiles('**/buildozer.spec') }}-v2
+        # 新的缓存key v3，清空旧的坏缓存，重新下载
+        key: ${{ runner.os }}-buildozer-${{ hashFiles('**/buildozer.spec') }}-v3
         
     - name: Install system dependencies
       run: |
@@ -36,6 +36,8 @@ jobs:
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
+        # 先安装兼容的 setuptools 版本，避免新版本的兼容问题
+        pip install setuptools==65.5.0
         pip install Cython==0.29.36  # 适配 Kivy 2.1.0 的稳定兼容版本
         pip install buildozer==1.5.0 # 稳定版 Buildozer，避免开发版的兼容性问题
         
