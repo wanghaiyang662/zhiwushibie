@@ -9,10 +9,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest  # 切换到最新 runner，彻底解决排队问题
-    # 全局环境变量，所有步骤都能用到，解决 sdkmanager 找不到的问题
+    # 全局环境变量，使用 Ubuntu Runner 固定路径，解决变量识别错误
     env:
-      ANDROID_HOME: ${{ runner.home }}/.buildozer/android/platform
-      PATH: ${{ runner.home }}/.buildozer/android/platform/cmdline-tools/latest/bin:${{ runner.home }}/.buildozer/android/platform/platform-tools:${{ PATH }}
+      ANDROID_HOME: /home/runner/.buildozer/android/platform
+      PATH: /home/runner/.buildozer/android/platform/cmdline-tools/latest/bin:/home/runner/.buildozer/android/platform/platform-tools:${{ PATH }}
     steps:
     - uses: actions/checkout@v4
     
