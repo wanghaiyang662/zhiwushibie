@@ -23,8 +23,8 @@ android.ndk = 25b
 android.release_artifact = apk
 android.entrypoint = org.kivy.android.PythonActivity
 android.apptheme = Theme.AppCompat.Light.NoActionBar
-# 关键：禁用 SDK 自动更新（避免 GitHub Actions 网络超时）
-android.skip_update = True
+# 改回自动更新，让 Buildozer 自己安装缺失的 build-tools（解决 aidl 找不到的问题）
+android.skip_update = False
 # 关键：自动接受 SDK 许可（CI/CD 环境必须）
 android.accept_sdk_license = True
 
