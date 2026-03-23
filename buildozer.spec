@@ -7,8 +7,8 @@ source.dir = .
 source.include_exts = py,png,jpg,kv,atlas
 version = 1.0
 
-# 核心依赖（适配 GitHub Actions 编译环境）
-requirements = python3,kivy==2.1.0,pillow,oss2,certifi,chardet,idna,urllib3,requests,crcmod,pycryptodome,aliyun-python-sdk-kms,aliyun-python-sdk-core,six,jmespath,cryptography,cffi,pycparser,charset_normalizer,pyjnius
+# 核心依赖（适配 GitHub Actions 编译环境，固定版本解决所有兼容问题）
+requirements = python3,kivy==2.1.0,pillow,oss2,certifi,chardet,idna,urllib3,requests,crcmod,pycryptodome,aliyun-python-sdk-kms,aliyun-python-sdk-core,six,jmespath,cryptography==36.0.2,cffi==1.15.1,pycparser,charset_normalizer,pyjnius==1.6.1,setuptools==65.5.0
 
 # 界面配置
 orientation = portrait
