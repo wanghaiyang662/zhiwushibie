@@ -1,0 +1,34 @@
+# Buildozer configuration for GitHub Actions
+
+# Basic application settings
+title = 永红林场动植物识别学习系统
+package.name = enhancedquiz
+package.domain = org.example
+
+# Version information
+version = 1.0
+
+# Source code location
+source.dir = .
+source.include_exts = py,png,jpg,kv,atlas,ttf
+
+# Application requirements
+requirements = python3,kivy==2.1.0,pillow,oss2,certifi,chardet,idna,urllib3,requests,crcmod,pycryptodome,aliyun-python-sdk-kms,aliyun-python-sdk-core,six,jmespath,cryptography,cffi,pycparser,charset_normalizer,pyjnius
+
+# Android-specific settings
+android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
+android.api = 31
+android.minapi = 21
+android.ndk = 23b
+android.sdk = 30
+android.archs = armeabi-v7a,arm64-v8a
+
+# Build settings
+android.accept_sdk_license = True
+p4a.branch = master
+
+# Orientation
+orientation = Portrait
+
+# Icons and splash
+# (These can be added later if needed)
