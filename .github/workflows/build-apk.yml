@@ -9,6 +9,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest  # 切换到最新 runner，彻底解决排队问题
+    # 全局配置 pip 国内源，解决国外源 502 下载失败的问题
+    env:
+      PIP_INDEX_URL: https://pypi.tuna.tsinghua.edu.cn/simple
+      PIP_TRUSTED_HOST: pypi.tuna.tsinghua.edu.cn
     steps:
     - uses: actions/checkout@v4
     
