@@ -29,8 +29,7 @@ android.skip_update = False
 android.accept_sdk_license = True
 
 # Python for Android 配置
-# 改用稳定版，不用开发版的master，避免bug
-p4a.branch = 2023.10.13
+p4a.branch = master
 # 关键：增加构建超时时间（适配复杂依赖）
 p4a.timeout = 1800
 
