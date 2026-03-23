@@ -50,7 +50,12 @@ jobs:
         
     - name: Accept Android SDK licenses
       run: |
-        yes | $HOME/.buildozer/android/platform/cmdline-tools/latest/bin/sdkmanager --licenses || true
+        yes | sdkmanager --licenses || true
+        
+    - name: Install required SDK packages
+      run: |
+        # 提前安装我们需要的 SDK 包，解决 aidl 找不到的问题
+        sdkmanager "platform-tools" "platforms;android-31" "build-tools;31.0.0"
         
     - name: Debug - Show buildozer.spec
       run: |
