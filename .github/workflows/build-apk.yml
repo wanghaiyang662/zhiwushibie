@@ -9,6 +9,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest  # 切换到最新 runner，彻底解决排队问题
+    # 全局环境变量，所有步骤都能用到，解决 sdkmanager 找不到的问题
+    env:
+      ANDROID_HOME: ${{ runner.home }}/.buildozer/android/platform
+      PATH: ${{ runner.home }}/.buildozer/android/platform/cmdline-tools/latest/bin:${{ runner.home }}/.buildozer/android/platform/platform-tools:${{ PATH }}
     steps:
     - uses: actions/checkout@v4
     
@@ -36,9 +40,6 @@ jobs:
         
     - name: Setup Android SDK
       run: |
-        export ANDROID_HOME=$HOME/.buildozer/android/platform
-        export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
-        export PATH=$PATH:$ANDROID_HOME/platform-tools
         mkdir -p $ANDROID_HOME
         cd $ANDROID_HOME
         # 使用最新版 commandline tools，适配新的 Android 构建环境
