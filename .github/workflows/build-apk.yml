@@ -1,1 +1,82 @@
+name: Build Android APK
 
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+        
+    - name: Cache Buildozer
+      uses: actions/cache@v3
+      with:
+        path: ~/.buildozer
+        key: ${{ runner.os }}-buildozer-${{ hashFiles('**/buildozer.spec') }}
+        
+    - name: Install system dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y build-essential git unzip zip libffi-dev libssl-dev libncurses5-dev autoconf libtool pkg-config openjdk-8-jdk
+        
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install Cython==0.29.33
+        pip install buildozer
+        
+    - name: Setup Android SDK
+      run: |
+        export ANDROID_HOME=$HOME/.buildozer/android/platform
+        export PATH=$PATH:$ANDROID_HOME/tools/bin
+        export PATH=$PATH:$ANDROID_HOME/platform-tools
+        mkdir -p $ANDROID_HOME
+        cd $ANDROID_HOME
+        wget https://dl.google.com/android/repository/commandlinetools-linux-7583922_latest.zip
+        unzip commandlinetools-linux-7583922_latest.zip
+        mkdir -p cmdline-tools/latest
+        mv cmdline-tools/* $ANDROID_HOME/cmdline-tools/latest/ 2>/dev/null || true
+        rm commandlinetools-linux-7583922_latest.zip
+        
+    - name: Accept Android SDK licenses
+      run: |
+        yes | $HOME/.buildozer/android/platform/cmdline-tools/latest/bin/sdkmanager --licenses || true
+        
+    - name: Initialize Buildozer
+      run: |
+        buildozer init || true  # Continue even if already initialized
+        
+    - name: Debug - Show buildozer.spec
+      run: |
+        cat buildozer.spec
+        
+    - name: Build Android APK
+      run: |
+        buildozer android debug
+      timeout-minutes: 45  # Increase timeout for lengthy build process
+      
+    - name: Debug - List output files
+      if: always()  # Run even if previous step failed
+      run: |
+        echo "Listing all files in project directory:"
+        find . -type f -name "*.apk" -exec ls -la {} \;
+        echo "Contents of bin directory:"
+        ls -la bin/ || echo "Bin directory does not exist"
+        
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-apk
+        path: bin/*.apk
+      if: success()  # Only upload if build succeeded
