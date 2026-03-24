@@ -18,3 +18,5 @@ orientation = portrait
 android.gradle_dependencies = com.google.android.material:material:1.8.0
 android.enable_androidx = True
 android.log_level = 2
+# 关键：强制使用国内Gradle仓库
+android.gradle_repositories = https://maven.aliyun.com/repository/google,https://maven.aliyun.com/repository/public,https://maven.aliyun.com/repository/gradle-plugin
