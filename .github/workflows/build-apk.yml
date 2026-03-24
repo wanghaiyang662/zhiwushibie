@@ -41,15 +41,25 @@ jobs:
       run: |
         if [ ! -f "buildozer.spec" ]; then
           echo "警告: 没有找到 buildozer.spec 文件。请确保你的项目中有此配置文件。"
-          echo "如果没有，请先在本地运行 'buildozer init' 生成配置文件，然后根据需要修改。"
           exit 1
         else
           echo "找到 buildozer.spec 文件，继续构建过程。"
         fi
         
-    - name: Build Android APK
+    - name: Show buildozer.spec content
+      run: cat buildozer.spec
+      
+    - name: Initialize Android SDK and NDK
       run: |
-        buildozer android debug
+        # 创建必要的目录
+        mkdir -p ~/.buildozer/android/platform
+        # 验证Java安装
+        java -version
+        javac -version
+        
+    - name: Build Android APK with verbose logging
+      run: |
+        buildozer android debug --verbose
         
     - name: Upload APK
       uses: actions/upload-artifact@v4
