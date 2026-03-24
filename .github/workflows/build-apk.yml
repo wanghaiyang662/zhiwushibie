@@ -52,7 +52,7 @@ jobs:
         echo "android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE" >> temp_spec.txt
         echo "android.api = 30" >> temp_spec.txt
         echo "android.minapi = 21" >> temp_spec.txt
-        echo "android.ndk = 23c" >> temp_spec.txt
+        echo "android.ndk = 25c" >> temp_spec.txt
         echo "android.sdk = 30" >> temp_spec.txt
         echo "android.archs = arm64-v8a,armeabi-v7a" >> temp_spec.txt
         echo "" >> temp_spec.txt
@@ -94,6 +94,12 @@ jobs:
     - name: Build APK
       run: |
         export PATH=$PATH:~/.local/bin
+        # 清理之前的构建
+        rm -rf .buildozer/android/platform/android-ndk-*
+        # 设置环境变量指向系统提供的NDK
+        export ANDROID_NDK_HOME="/usr/local/lib/android/sdk/ndk/27.3.13750724"
+        export ANDROID_NDK_ROOT="/usr/local/lib/android/sdk/ndk/27.3.13750724"
+        export ANDROID_NDK="/usr/local/lib/android/sdk/ndk/27.3.13750724"
         buildozer android debug
         
     - name: List output files
