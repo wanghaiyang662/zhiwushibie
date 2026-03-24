@@ -196,24 +196,32 @@ jobs:
         else
           echo "enhancedquiz bin目录不存在，列出所有dists下的目录:"
           ls -la .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/
+          echo "尝试创建bin目录并重新检查enhancedquiz目录结构:"
+          mkdir -p .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz/bin
+          ls -la .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz/
         fi
         
     - name: Find and copy APK to expected location
       run: |
         echo "查找生成的 APK 文件..."
         
-        # 首先尝试在典型的buildozer输出目录中查找
+        # 首先检查增强的查找路径
         APK_FILE=""
         
-        # 检查特定的dist目录，根据之前的日志我们知道应用名为enhancedquiz
-        if [ -d ".buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz/bin" ]; then
-          echo "检查 .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz/bin 目录"
-          ls -la .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz/bin
-          APK_CANDIDATE=$(find .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz/bin -name "*.apk" -type f | head -n1)
+        # 检查增强的路径 - enhancedquiz bin目录
+        ENHANCEDQUIZ_BIN=".buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz/bin"
+        if [ -d "$ENHANCEDQUIZ_BIN" ]; then
+          echo "检查 $ENHANCEDQUIZ_BIN 目录"
+          ls -la "$ENHANCEDQUIZ_BIN"
+          APK_CANDIDATE=$(find "$ENHANCEDQUIZ_BIN" -name "*.apk" -type f | head -n1)
           if [ -n "$APK_CANDIDATE" ] && [ -f "$APK_CANDIDATE" ]; then
             APK_FILE="$APK_CANDIDATE"
             echo "在enhancedquiz bin目录中找到APK: $APK_FILE"
+          else
+            echo "enhancedquiz bin目录中没有找到APK文件"
           fi
+        else
+          echo "enhancedquiz bin目录不存在"
         fi
         
         # 如果在enhancedquiz目录没找到，尝试其他dist目录
@@ -256,11 +264,20 @@ jobs:
           ls -la bin/
         else
           echo "错误: 未找到任何APK文件"
-          echo "列出所有构建输出目录的内容:"
-          find .buildozer -type d -name "*dist*" | while read dir; do
-            echo "=== 内容: $dir ==="
-            ls -la "$dir" 2>/dev/null || echo "无法访问 $dir"
-          done
+          echo "详细列出构建输出目录内容:"
+          if [ -d ".buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz" ]; then
+            echo "=== enhancedquiz 目录内容 ==="
+            find .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz -type f -name "*.apk" -exec ls -la {} \;
+            if [ $? -ne 0 ]; then
+              echo "在enhancedquiz目录下没有找到APK文件，列出该目录下所有文件:"
+              find .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz -type f
+            fi
+          else
+            echo "enhancedquiz目录不存在"
+          fi
+          
+          echo "在整个buildozer目录下搜索APK文件:"
+          find .buildozer -type f -name "*.apk"
           exit 1
         fi
         
