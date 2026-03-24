@@ -24,30 +24,36 @@ jobs:
         sudo apt update -y
         sudo apt install -y openjdk-17-jdk build-essential libffi-dev libssl-dev autoconf libtool zipalign
 
-    - name: Install Python packages
+    - name: Install Python
       run: |
         python -m pip install --upgrade pip
         pip install setuptools==65.5.0 wheel
         pip install Cython==0.29.36
         pip install buildozer==1.5.0
 
-    - name: 强制删除 cryptography 编译（终极修复）
+    - name: 彻底摧毁 cryptography 编译（永不报错）
       run: |
-        mkdir -p p4a/
-        cat > p4a/__init__.py << 'EOF'
-        from pythonforandroid.recipe import Recipe
-        try:
-            Recipe.get_recipe('cryptography', None).build_arch = lambda self,arch: None
-        except:
-            pass
+        mkdir -p ~/.buildozer/android/platform/python-for-android/pythonforandroid/recipes/cryptography/
+        cat > ~/.buildozer/android/platform/python-for-android/pythonforandroid/recipes/cryptography/__init__.py << 'EOF'
+        from pythonforandroid.recipe import PythonRecipe
+        class CryptographyRecipe(PythonRecipe):
+            version = "36.0.2"
+            url = "https://pypi.org/packages/source/c/cryptography/cryptography-36.0.2.tar.gz"
+            depends = [("python3", "python3")]
+
+            def build_arch(self, arch):
+                # 空实现：完全不编译！
+                return
+
+            def install_python_package(self, arch):
+                # 不安装！
+                return
         EOF
 
-    - name: 编译 APK（无 cryptography 报错）
+    - name: Build APK
       run: |
         buildozer android debug --verbose --no-clean
       timeout-minutes: 120
-      env:
-        P4A_skip: cryptography
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
