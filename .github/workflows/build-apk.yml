@@ -6,75 +6,60 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
-    env:
-      PIP_INDEX_URL: https://pypi.tuna.tsinghua.edu.cn/simple
-      PIP_TRUSTED_HOST: pypi.tuna.tsinghua.edu.cn
-      ANDROID_HOME: /home/runner/.buildozer/android/platform/android-sdk
-      ANDROID_SDK_ROOT: /home/runner/.buildozer/android/platform/android-sdk
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
           python-version: '3.9'
-      - name: 安装Ubuntu底层编译依赖
+      - name: 安装系统依赖
         run: |
-          sudo apt update -y
-          sudo apt install -y openjdk-17-jdk build-essential libffi-dev libssl-dev autoconf libtool zipalign libltdl-dev pkg-config zip unzip wget curl
-      - name: 安装Python构建工具
+          sudo apt-get update
+          sudo apt-get install -y git zip unzip openjdk-17-jdk libncurses5 libncurses5-dev libncursesw5 lib32z1 lib32ncurses6 lib32stdc++6 curl wget build-essential libffi-dev libssl-dev autoconf libtool zipalign libltdl-dev pkg-config
+      - name: 安装Python依赖
         run: |
           python -m pip install --upgrade pip
-          pip install setuptools==65.5.0 wheel
-          pip install Cython==0.29.36
+          pip install cython==0.29.36
           pip install buildozer==1.5.0
-      - name: 缓存Buildozer构建文件
-        uses: actions/cache@v4
-        with:
-          path: ~/.buildozer
-          key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
-          restore-keys: buildozer-${{ runner.os }}-
-      - name: 安装Android SDK命令行工具（终极修正）
+      - name: 设置Android SDK（完全兼容Buildozer）
         run: |
-          # 创建标准目录结构
-          mkdir -p $ANDROID_HOME/cmdline-tools/latest
+          # 创建SDK目录
+          SDK_PATH="/home/runner/.buildozer/android/platform/android-sdk"
+          mkdir -p $SDK_PATH
           
-          # 下载并解压SDK命令行工具
-          wget -O sdk.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-          unzip sdk.zip -d /tmp/sdk-extract
-          mv /tmp/sdk-extract/cmdline-tools/* $ANDROID_HOME/cmdline-tools/latest/
-          rm -rf /tmp/sdk-extract sdk.zip
+          # 下载旧版SDK Tools（包含tools目录）
+          wget -O sdk-tools.zip https://dl.google.com/android/repository/sdk-tools-linux-4333796.zip
+          unzip -q sdk-tools.zip -d $SDK_PATH
+          rm sdk-tools.zip
           
-          # 添加执行权限
-          chmod +x $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager
+          # 创建许可文件（避免交互式提示）
+          mkdir -p $SDK_PATH/licenses
+          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > $SDK_PATH/licenses/android-sdk-license
+          echo "84831b9409646a918e30573bab4c9c91346d8abd" > $SDK_PATH/licenses/android-sdk-preview-license
           
-          # 自动接受许可协议
-          (echo y; echo y; echo y; echo y; echo y) | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses --sdk_root=$ANDROID_HOME || true
+          # 设置环境变量
+          export ANDROID_HOME=$SDK_PATH
+          export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/tools/bin:$ANDROID_HOME/platform-tools
           
           # 安装必要组件
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
-            "platform-tools" \
-            "platforms;android-31" \
-            "build-tools;34.0.0" \
-            --sdk_root=$ANDROID_HOME
+          yes | $ANDROID_HOME/tools/bin/sdkmanager --update
+          yes | $ANDROID_HOME/tools/bin/sdkmanager "platform-tools" "platforms;android-31" "build-tools;34.0.0" "ndk;25.1.8937393"
           
-          # 关键修正：创建符号链接，使Buildozer能找到sdkmanager
-          mkdir -p $ANDROID_HOME/tools/bin
-          ln -s $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager $ANDROID_HOME/tools/bin/sdkmanager
-          ln -s $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager $ANDROID_HOME/tools/bin/avdmanager
-      - name: Build APK
+          # 验证安装
+          $ANDROID_HOME/tools/bin/sdkmanager --list
+      - name: 构建APK
         run: |
-          # 显式设置环境变量
-          export ANDROID_HOME=/home/runner/.buildozer/android/platform/android-sdk
-          export ANDROID_SDK_ROOT=$ANDROID_HOME
-          export PATH=$PATH:$ANDROID_HOME/tools/bin:$ANDROID_HOME/cmdline-tools/latest/bin
+          # 设置环境变量
+          export ANDROID_HOME="/home/runner/.buildozer/android/platform/android-sdk"
+          export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/tools/bin:$ANDROID_HOME/platform-tools
           
-          # 清除可能的缓存问题
+          # 清除可能的缓存
           rm -rf .buildozer/android/platform/python-for-android
           
-          # 构建APK
+          # 构建
           buildozer android debug --verbose
         timeout-minutes: 180
-      - name: 上传APK产物
+      - name: 保存APK
         uses: actions/upload-artifact@v4
         if: success()
         with:
