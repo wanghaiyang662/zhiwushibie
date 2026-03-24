@@ -6,46 +6,37 @@ package.domain = org.example
 source.dir = .
 source.include_exts = py,png,jpg,kv,atlas
 version = 1.0
-
-# 核心依赖（固定所有兼容版本，彻底解决交叉编译问题）
-requirements = python3,kivy==2.1.0,pillow,oss2,certifi,chardet,idna,urllib3,requests,crcmod,pycryptodome,aliyun-python-sdk-kms,aliyun-python-sdk-core,six,jmespath,cryptography==36.0.2,cffi==1.15.1,pycparser,charset_normalizer,pyjnius==1.6.1,setuptools==65.5.0
-
+# 精简依赖：移除自动拉取的冗余项（如urllib3/chardet/idna，requests会自动带）
+requirements = python3,kivy==2.1.0,pillow,oss2,requests,crcmod,pycryptodome,aliyun-python-sdk-kms,aliyun-python-sdk-core,six,jmespath,cryptography==36.0.2,cffi==1.15.1,pyjnius==1.6.1,setuptools==65.5.0
 # 界面配置
 orientation = portrait
 fullscreen = 0
-
-# Android 核心配置（适配新版 Buildozer，移除弃用参数）
+# Android 核心配置（严格匹配版本，适配p4a）
 android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
 android.api = 31
-android.compileSdk = 31  # 替换旧的 android.sdk，适配新版 Buildozer
+android.compileSdk = 31
 android.minapi = 21
-android.ndk = 25b
+android.ndk = 25b  # 与环境变量ANDROID_NDK_HOME严格匹配
 android.release_artifact = apk
 android.entrypoint = org.kivy.android.PythonActivity
 android.apptheme = Theme.AppCompat.Light.NoActionBar
-# 改回自动更新，让 Buildozer 自己安装缺失的构建工具
 android.skip_update = False
-# 关键：自动接受 SDK 许可（CI/CD 环境必须）
 android.accept_sdk_license = True
-
-# Python for Android 配置：改回 master 分支，彻底解决 tag 找不到的问题
-# 我们已经补上了 libltdl-dev，现在 master 分支也可以正常编译 libffi 了
+# Python for Android 配置：固定分支，适配NDK25b
 p4a.branch = master
-# 关键：增加构建超时时间（适配复杂依赖）
-p4a.timeout = 1800
+p4a.timeout = 2400 # 延长编译超时
+p4a.ndk_api = 21   # 与minapi一致，避免NDK编译冲突
+# 禁用p4a的缓存清理，适配Actions缓存
+p4a.no_clean = False
 
-#
 # OSX specific
-#
 osx.python_version = 3
 osx.kivy_version = 2.1.0
 
 [buildozer]
-# CI/CD 环境专属配置
-log_level = 2                # 详细日志，方便排查 Actions 构建问题
-warn_on_root = 0             # 禁用 root 警告（GitHub Actions 以 root 运行）
-# 关键：指定 Buildozer 缓存目录（复用 Actions 缓存）
-build_dir = ./.buildozer
-bin_dir = ./bin
-# 关键：禁用交互式提示（CI/CD 环境必须）
-disable_interactive = True
+log_level = 2                # 详细日志，方便排查
+warn_on_root = 0             # 禁用root警告（GitHub Actions默认root）
+build_dir = ./.buildozer     # 项目内构建目录，适配Actions
+bin_dir = ./bin              # APK输出目录
+disable_interactive = True   # 禁用交互式提示（CI/CD必须）
+android.logcat_format = long # 可选：更详细的Android日志
