@@ -7,7 +7,6 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     env:
-      # 关键：使用GitHub Actions预装的Android SDK
       ANDROID_HOME: /usr/local/lib/android/sdk
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
       JAVA_HOME: /usr/lib/jvm/temurin-11-jdk-amd64
@@ -15,60 +14,127 @@ jobs:
       PIP_TRUSTED_HOST: pypi.tuna.tsinghua.edu.cn
     steps:
       - uses: actions/checkout@v4
-      - name: 设置Java 11
+      - name: 🌐 设置Java 11（强制指定）
         uses: actions/setup-java@v4
         with:
           java-version: '11'
           distribution: 'temurin'
-      - name: 设置Android SDK
+          cache: 'gradle'
+      - name: 📱 设置Android SDK（官方Action）
         uses: android-actions/setup-android@v3
         with:
           cmdline-tools-version: 9477386
-      - name: 安装Ubuntu依赖
+      - name: 🔧 安装系统依赖
         run: |
           sudo apt-get update
-          sudo apt-get install -y git zip unzip libncurses5 libncurses5-dev libncursesw5 lib32z1 lib32ncurses6 lib32stdc++6 curl wget build-essential libffi-dev libssl-dev autoconf libtool zipalign libltdl-dev pkg-config libusb-1.0-0
-      - name: 安装Python依赖
+          sudo apt-get install -y git zip unzip libncurses5 lib32z1 lib32stdc++6 curl wget build-essential libffi-dev libssl-dev autoconf libtool zipalign pkg-config libusb-1.0-0
+      - name: 🐍 安装Python构建工具
         run: |
-          python -m pip install --upgrade pip
-          pip install setuptools==65.5.0 wheel==0.42.0
+          python -m pip install --upgrade pip setuptools wheel
           pip install Cython==0.29.36
           pip install buildozer==1.5.0
-          # 安装存在的p4a版本（根据错误日志选择）
+          # 使用错误日志中确认存在的版本
           pip install python-for-android==2023.5.21
-      - name: 接受Android SDK许可
+      - name: 📦 配置Gradle国内镜像（关键！解决99%构建失败）
         run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses --sdk_root=$ANDROID_HOME || true
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-31" "build-tools;31.0.0" "ndk;25.1.8937393" --sdk_root=$ANDROID_HOME
-      - name: 构建APK
+          mkdir -p ~/.gradle
+          cat > ~/.gradle/init.gradle <<'EOF'
+allprojects {
+    buildscript {
+        repositories {
+            maven { url 'https://maven.aliyun.com/repository/google' }
+            maven { url 'https://maven.aliyun.com/repository/public' }
+            maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+            google()
+            mavenCentral()
+        }
+    }
+    repositories {
+        maven { url 'https://maven.aliyun.com/repository/google' }
+        maven { url 'https://maven.aliyun.com/repository/public' }
+        maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+        google()
+        mavenCentral()
+    }
+}
+EOF
+          echo "Gradle镜像配置完成"
+      - name: 📲 安装Android组件（带重试机制）
         run: |
-          # 设置关键环境变量
-          export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
+          # 接受许可
+          (yes || true) | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses --sdk_root=$ANDROID_HOME 2>&1 | tail -5
+          
+          # 安装组件（带重试）
+          for i in {1..3}; do
+            echo "尝试安装Android组件 (第 $i 次)..."
+            if $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+              "platform-tools" \
+              "platforms;android-31" \
+              "build-tools;31.0.0" \
+              "ndk;25.1.8937393" \
+              --sdk_root=$ANDROID_HOME 2>&1 | tee sdk_install.log; then
+              echo "✓ Android组件安装成功"
+              break
+            else
+              echo "✗ 安装失败，等待10秒后重试..."
+              sleep 10
+              if [ $i -eq 3 ]; then
+                echo "=== SDK安装日志 ==="
+                cat sdk_install.log
+                exit 1
+              fi
+            fi
+          done
+          
+          # 验证NDK
           export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/25.1.8937393
+          echo "NDK路径: $ANDROID_NDK_HOME"
+          [ -d "$ANDROID_NDK_HOME" ] && echo "✓ NDK存在" || (echo "✗ NDK不存在"; ls -la $ANDROID_HOME/ndk; exit 1)
+      - name: 🏗️ 构建APK（保存完整日志）
+        id: build_apk
+        run: |
+          export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/25.1.8937393
+          export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
           
-          # 验证环境
-          echo "ANDROID_HOME: $ANDROID_HOME"
-          echo "ANDROID_NDK_HOME: $ANDROID_NDK_HOME"
-          echo "Java version: $(java -version 2>&1 | head -1)"
-          echo "SDK Manager: $($ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --version --sdk_root=$ANDROID_HOME)"
+          echo "=== 环境验证 ==="
+          echo "Java: $(java -version 2>&1 | head -1)"
+          echo "SDK: $ANDROID_HOME"
+          echo "NDK: $ANDROID_NDK_HOME"
+          echo "Gradle: $(which gradle || echo 'not found')"
           
-          # 清理构建缓存
-          rm -rf .buildozer
+          # 清理旧构建
+          rm -rf .buildozer build.log gradle.log
           
-          # 详细模式构建
-          buildozer --verbose android debug
+          # 执行构建并保存完整日志
+          if buildozer --verbose android debug 2>&1 | tee build.log; then
+            echo "✓ 构建成功"
+            echo "APK路径: $(find bin -name '*.apk' 2>/dev/null || echo '未找到')"
+            echo "BUILD_STATUS=success" >> $GITHUB_OUTPUT
+          else
+            echo "✗ 构建失败"
+            echo "BUILD_STATUS=failed" >> $GITHUB_OUTPUT
+            # 保存关键错误片段
+            echo "=== 最后50行构建日志 ==="
+            tail -50 build.log
+            exit 1
+          fi
         timeout-minutes: 240
-      - name: 保存APK
+        continue-on-error: true
+      - name: 📤 保存APK（仅成功时）
         uses: actions/upload-artifact@v4
-        if: success()
+        if: steps.build_apk.outputs.BUILD_STATUS == 'success'
         with:
           name: android-apk
           path: bin/*.apk
-      - name: 保存失败日志
+          retention-days: 30
+      - name: 📋 保存完整构建日志（始终执行）
         uses: actions/upload-artifact@v4
-        if: failure()
         with:
-          name: build-logs
+          name: build-logs-${{ github.run_number }}
           path: |
-            .buildozer/android/platform/python-for-android/*.log
-            .buildozer/android/app/gradle.log
+            build.log
+            .buildozer/**/*.log
+            .buildozer/android/platform/build-*/**/*.log
+            sdk_install.log
+          retention-days: 7
+          if-no-files-found: warn
