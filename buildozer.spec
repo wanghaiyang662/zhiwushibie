@@ -7,7 +7,7 @@ source.dir = .
 source.include_exts = py,png,jpg,kv,atlas
 version = 1.0
 
-# 核心依赖（适配 GitHub Actions 编译环境，固定版本解决所有兼容问题）
+# 核心依赖（固定所有兼容版本，彻底解决交叉编译问题）
 requirements = python3,kivy==2.1.0,pillow,oss2,certifi,chardet,idna,urllib3,requests,crcmod,pycryptodome,aliyun-python-sdk-kms,aliyun-python-sdk-core,six,jmespath,cryptography==36.0.2,cffi==1.15.1,pycparser,charset_normalizer,pyjnius==1.6.1,setuptools==65.5.0
 
 # 界面配置
@@ -28,8 +28,9 @@ android.skip_update = False
 # 关键：自动接受 SDK 许可（CI/CD 环境必须）
 android.accept_sdk_license = True
 
-# Python for Android 配置
-p4a.branch = master
+# Python for Android 配置：使用官方稳定 Release 版本 2023.10.13
+# 放弃了不稳定的 master 开发版，这个是和 Buildozer 1.5.0 配套的官方稳定版
+p4a.commit = 2023.10.13
 # 关键：增加构建超时时间（适配复杂依赖）
 p4a.timeout = 1800
 
