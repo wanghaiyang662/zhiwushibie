@@ -24,8 +24,8 @@ android.archs = armeabi-v7a,arm64-v8a
 android.accept_sdk_license = True
 p4a.branch = master
 
-# Orientation
-orientation = Portrait
+# Orientation - 必须是小写
+orientation = portrait
 
 # Title of application
 title = 永红林场动植物识别学习系统
