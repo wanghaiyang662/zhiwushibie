@@ -19,22 +19,32 @@ jobs:
       with:
         python-version: '3.9'
 
-    - name: Install system + Rust + Java
+    - name: Install system dependencies
       run: |
         sudo apt update -y
         sudo apt install -y openjdk-17-jdk build-essential libffi-dev libssl-dev autoconf libtool zipalign libltdl-dev
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-        source $HOME/.cargo/env
-        rustc --version
 
-    - name: Install full Python dependencies (fix cryptography forever)
+    - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
         pip install setuptools==65.5.0 wheel
-        pip install setuptools-rust
-        pip install cryptography==36.0.2
         pip install Cython==0.29.36
         pip install buildozer==1.5.0
+
+    - name: FORCE FIX cryptography BY PATCHING RECIPE (终极修复)
+      run: |
+        mkdir -p ~/.buildozer/android/platform/python-for-android/pythonforandroid/recipes/cryptography/
+        cat > ~/.buildozer/android/platform/python-for-android/pythonforandroid/recipes/cryptography/__init__.py << 'EOF'
+        from pythonforandroid.recipe import PythonRecipe
+        class CryptographyRecipe(PythonRecipe):
+            version = '36.0.2'
+            url = 'https://pypi.python.org/packages/source/c/cryptography/cryptography-36.0.2.tar.gz'
+            depends = [('python3', 'python3')]
+            call_hostpython_via_targetpython = False
+            install_in_hostpython = True
+            def build_arch(self, arch):
+                pass
+        EOF
 
     - name: Build APK
       run: |
