@@ -9,10 +9,11 @@ requirements = python3,kivy==2.1.0,pillow,oss2,certifi,chardet,idna,urllib3,requ
 android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
 android.api = 31
 android.minapi = 21
-# 修正：NDK 版本从 23b 改为 25b
-android.ndk = 25b
-android.sdk = 30
+android.ndk = 25.0.10325124
+android.ndk_api = 21
+android.sdk = 31
 android.archs = armeabi-v7a,arm64-v8a
 android.accept_sdk_license = True
 p4a.branch = master
 orientation = portrait
+android.gradle_dependencies = 'com.google.android.material:material:1.8.0'
