@@ -1,9 +1,7 @@
 name: Build Android APK
 on:
   push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -15,74 +13,28 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
 
     - name: Set up Python 3.9
       uses: actions/setup-python@v5
       with:
         python-version: '3.9'
 
-    - name: Wipe all broken caches
+    - name: Install Java 17 & dependencies
       run: |
-        rm -rf ~/.buildozer
-        rm -rf ./.buildozer
-        rm -rf ~/.gradle
-        rm -rf ~/.cache/pip
-        rm -rf ~/.android
+        sudo apt update
+        sudo apt install -y openjdk-17-jdk git wget unzip zip build-essential libffi-dev libssl-dev autoconf libtool zipalign libltdl-dev
 
-    - name: Install system dependencies + JDK 17
-      run: |
-        sudo apt update -y
-        sudo apt install -y openjdk-17-jdk
-        sudo update-alternatives --set java /usr/lib/jvm/java-17-openjdk-amd64/bin/java
-        java -version
-
-        sudo apt install -y build-essential git unzip zip libffi-dev libssl-dev libncurses5-dev \
-        autoconf libtool pkg-config zipalign libltdl-dev \
-        libjpeg-dev libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
-        libgl1-mesa-dev libgles2-mesa-dev ant
-
-    - name: Install Python dependencies
+    - name: Install Python packages
       run: |
         python -m pip install --upgrade pip
         pip install setuptools==65.5.0 wheel setuptools-rust
         pip install Cython==0.29.36
         pip install buildozer==1.5.0
 
-    - name: Use OLD Android SDK Tools (FIXES JAVA ERROR PERMANENTLY)
-      run: |
-        export ANDROID_HOME=$HOME/.buildozer/android/platform
-        mkdir -p $ANDROID_HOME
-        cd $ANDROID_HOME
-
-        # 🔥 关键修复：使用 兼容 Java11/17 的旧版 commandlinetools，彻底解决版本错误
-        wget -q https://dl.google.com/android/repository/commandlinetools-linux-8512546.zip
-        unzip -q commandlinetools-linux-8512546.zip
-        mkdir -p cmdline-tools/latest
-        mv cmdline-tools/* cmdline-tools/latest/ 2>/dev/null
-        rm -f commandlinetools-linux-8512546.zip
-
-        echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
-        echo "PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH" >> $GITHUB_ENV
-
-    - name: Accept SDK licenses
-      run: |
-        yes | sdkmanager --licenses >/dev/null 2>&1 || true
-
-    - name: Install SDK 31 components
-      run: |
-        sdkmanager "platform-tools" "platforms;android-31" "build-tools;31.0.0"
-
     - name: Build APK
       run: |
-        buildozer android debug --verbose
+        buildozer android debug
       timeout-minutes: 90
-
-    - name: Show APK
-      if: always()
-      run: |
-        find . -name "*.apk"
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
