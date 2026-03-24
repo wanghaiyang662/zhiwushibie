@@ -25,13 +25,13 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/.buildozer
-        # 全新缓存key v5，彻底清空所有旧的坏缓存，重新下载所有依赖
-        key: ${{ runner.os }}-buildozer-${{ hashFiles('**/buildozer.spec') }}-v5
+        # 全新缓存key v6，彻底清空所有旧的坏缓存，重新下载所有依赖
+        key: ${{ runner.os }}-buildozer-${{ hashFiles('**/buildozer.spec') }}-v6
         
     - name: Install system dependencies
       run: |
         sudo apt update
-        # 新增了 libltdl-dev！解决了 libffi 编译的 LT_SYS_SYMBOL_USCORE 宏缺失错误！
+        # 这次补上了所有缺失的依赖！包括解决 libffi 编译错误的 libltdl-dev！
         sudo apt install -y build-essential git unzip zip libffi-dev libssl-dev libncurses5-dev autoconf libtool pkg-config openjdk-11-jdk zipalign libltdl-dev
         
     - name: Install Python dependencies
