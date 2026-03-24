@@ -35,13 +35,15 @@ jobs:
           restore-keys: buildozer-${{ runner.os }}-
       - name: 安装Android SDK命令行工具
         run: |
-          # 确保创建SDK目录
-          mkdir -p ~/.buildozer/android/platform/android-sdk/cmdline-tools
+          # 创建正确的嵌套目录结构
+          mkdir -p ~/.buildozer/android/platform/android-sdk/cmdline-tools/cmdline-tools
           # 下载Android SDK命令行工具
           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-          unzip commandlinetools-linux-9477386_latest.zip -d ~/.buildozer/android/platform/android-sdk/cmdline-tools
-          # 安装必要的SDK组件
-          yes | ~/.buildozer/android/platform/android-sdk/cmdline-tools/bin/sdkmanager "platform-tools" "platforms;android-31" "build-tools;34.0.0" "ndk;25.0.10325124"
+          unzip commandlinetools-linux-9477386_latest.zip -d ~/.buildozer/android/platform/android-sdk/cmdline-tools/cmdline-tools
+          # 修复权限
+          chmod +x ~/.buildozer/android/platform/android-sdk/cmdline-tools/cmdline-tools/bin/*
+          # 安装必要的SDK组件（修复yes命令的Broken pipe问题）
+          (yes || true) | ~/.buildozer/android/platform/android-sdk/cmdline-tools/cmdline-tools/bin/sdkmanager "platform-tools" "platforms;android-31" "build-tools;34.0.0" "ndk;25.0.10325124" --sdk_root=$ANDROID_SDK_HOME
       - name: Build APK
         run: |
           buildozer android debug --verbose
