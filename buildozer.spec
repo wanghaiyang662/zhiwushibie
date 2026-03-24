@@ -16,7 +16,8 @@ requirements = python3,kivy==2.1.0,pillow,oss2,certifi,chardet,idna,urllib3,requ
 android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
 android.api = 31
 android.minapi = 21
-android.ndk = 23b
+# 使用支持的NDK版本
+android.ndk = 25b
 android.sdk = 30
 android.archs = armeabi-v7a,arm64-v8a
 
