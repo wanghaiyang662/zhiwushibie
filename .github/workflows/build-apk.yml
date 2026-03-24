@@ -32,28 +32,29 @@ jobs:
           path: ~/.buildozer
           key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
           restore-keys: buildozer-${{ runner.os }}-
-      - name: 安装Android SDK命令行工具（关键修正：使用 latest 目录）
+      - name: 安装Android SDK命令行工具（终极修正：使用标准路径）
         run: |
-          # 创建标准目录结构：cmdline-tools/latest/
+          # 创建标准目录结构
           mkdir -p $ANDROID_SDK_HOME/cmdline-tools/latest
           
           # 下载SDK命令行工具
-          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+          wget -O sdk.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
           
           # 解压到临时目录
-          unzip commandlinetools-linux-9477386_latest.zip -d /tmp/sdk-extract
+          mkdir -p /tmp/sdk-extract
+          unzip sdk.zip -d /tmp/sdk-extract
           
-          # 将内容移动到标准位置（关键！）
+          # 移动内容到标准位置
           mv /tmp/sdk-extract/cmdline-tools/* $ANDROID_SDK_HOME/cmdline-tools/latest/
           
           # 清理临时文件
-          rm -rf /tmp/sdk-extract commandlinetools-linux-9477386_latest.zip
+          rm -rf /tmp/sdk-extract sdk.zip
           
           # 添加执行权限
           chmod +x $ANDROID_SDK_HOME/cmdline-tools/latest/bin/sdkmanager
           
           # 自动接受所有许可协议（关键！）
-          (for i in {1..5}; do echo y; done) | $ANDROID_SDK_HOME/cmdline-tools/latest/bin/sdkmanager --licenses --sdk_root=$ANDROID_SDK_HOME || true
+          echo "y" | $ANDROID_SDK_HOME/cmdline-tools/latest/bin/sdkmanager --licenses --sdk_root=$ANDROID_SDK_HOME || true
           
           # 安装必要组件
           $ANDROID_SDK_HOME/cmdline-tools/latest/bin/sdkmanager \
