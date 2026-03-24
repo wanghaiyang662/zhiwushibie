@@ -10,6 +10,7 @@ jobs:
       PIP_INDEX_URL: https://pypi.tuna.tsinghua.edu.cn/simple
       PIP_TRUSTED_HOST: pypi.tuna.tsinghua.edu.cn
       ANDROID_NDK_HOME: /home/runner/.buildozer/android/platform/android-ndk-r25b
+      ANDROID_SDK_HOME: /home/runner/.buildozer/android/platform/android-sdk
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python 3.9
@@ -35,12 +36,12 @@ jobs:
       - name: 安装Android SDK命令行工具
         run: |
           # 确保创建SDK目录
-          mkdir -p ~/.buildozer/android/platform/android-sdk
+          mkdir -p ~/.buildozer/android/platform/android-sdk/cmdline-tools
           # 下载Android SDK命令行工具
           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-          unzip commandlinetools-linux-9477386_latest.zip -d ~/.buildozer/android/platform/android-sdk
+          unzip commandlinetools-linux-9477386_latest.zip -d ~/.buildozer/android/platform/android-sdk/cmdline-tools
           # 安装必要的SDK组件
-          yes | ~/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager "platform-tools" "platforms;android-31" "build-tools;34.0.0" "ndk;25.0.10325124"
+          yes | ~/.buildozer/android/platform/android-sdk/cmdline-tools/bin/sdkmanager "platform-tools" "platforms;android-31" "build-tools;34.0.0" "ndk;25.0.10325124"
       - name: Build APK
         run: |
           buildozer android debug --verbose
