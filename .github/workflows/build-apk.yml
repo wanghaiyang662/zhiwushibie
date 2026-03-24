@@ -94,7 +94,7 @@ jobs:
         # 检查是否存在main.py，如果不存在则创建一个简单的示例
         if [ ! -f "main.py" ]; then
           echo "创建示例 main.py 文件..."
-          cat > main.py << 'EOF'
+          cat > main.py << 'EOF_PYTHON'
 from kivy.app import App
 from kivy.uix.label import Label
 
@@ -103,7 +103,7 @@ class MyApp(App):
         return Label(text='永红林场动植物识别学习系统')
 
 MyApp().run()
-EOF
+EOF_PYTHON
         fi
         
         # 检查是否存在图标文件，如果不存在则创建一个基本的
