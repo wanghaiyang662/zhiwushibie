@@ -12,7 +12,6 @@ jobs:
     env:
       PIP_INDEX_URL: https://pypi.tuna.tsinghua.edu.cn/simple
       PIP_TRUSTED_HOST: pypi.tuna.tsinghua.edu.cn
-      BUILDOZER_LOG_LEVEL: DEBUG
 
     steps:
     - uses: actions/checkout@v4
@@ -23,29 +22,26 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.9'
-        cache: 'pip'
 
-    - name: Clear all broken caches
+    - name: Wipe all broken caches
       run: |
         rm -rf ~/.buildozer
         rm -rf ./.buildozer
         rm -rf ~/.gradle
         rm -rf ~/.cache/pip
+        rm -rf ~/.android
 
-    - name: Install system dependencies
+    - name: Install system dependencies + JDK 17
       run: |
         sudo apt update -y
-        sudo apt --fix-broken install -y
+        sudo apt install -y openjdk-17-jdk
+        sudo update-alternatives --set java /usr/lib/jvm/java-17-openjdk-amd64/bin/java
+        java -version
+
         sudo apt install -y build-essential git unzip zip libffi-dev libssl-dev libncurses5-dev \
         autoconf libtool pkg-config zipalign libltdl-dev \
         libjpeg-dev libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
         libgl1-mesa-dev libgles2-mesa-dev ant
-
-    - name: Install Java 17 (required for new sdkmanager)
-      run: |
-        sudo apt install -y openjdk-17-jdk
-        sudo update-alternatives --set java /usr/lib/jvm/java-17-openjdk-amd64/bin/java
-        java -version
 
     - name: Install Python dependencies
       run: |
@@ -53,44 +49,43 @@ jobs:
         pip install setuptools==65.5.0 wheel setuptools-rust
         pip install Cython==0.29.36
         pip install buildozer==1.5.0
-        pip list
 
-    - name: Setup Android SDK
+    - name: Use OLD Android SDK Tools (FIXES JAVA ERROR PERMANENTLY)
       run: |
-        export ANDROID_HOME=/home/runner/.buildozer/android/platform
-        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+        export ANDROID_HOME=$HOME/.buildozer/android/platform
         mkdir -p $ANDROID_HOME
         cd $ANDROID_HOME
-        wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-        unzip -q commandlinetools-linux-11076708_latest.zip
+
+        # 🔥 关键修复：使用 兼容 Java11/17 的旧版 commandlinetools，彻底解决版本错误
+        wget -q https://dl.google.com/android/repository/commandlinetools-linux-8512546.zip
+        unzip -q commandlinetools-linux-8512546.zip
         mkdir -p cmdline-tools/latest
-        mv cmdline-tools/* cmdline-tools/latest/ 2>/dev/null || true
-        rm -f commandlinetools-linux-11076708_latest.zip
+        mv cmdline-tools/* cmdline-tools/latest/ 2>/dev/null
+        rm -f commandlinetools-linux-8512546.zip
+
         echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
-        echo "PATH=$PATH" >> $GITHUB_ENV
+        echo "PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH" >> $GITHUB_ENV
 
     - name: Accept SDK licenses
-      run: yes | sdkmanager --licenses >/dev/null 2>&1 || true
+      run: |
+        yes | sdkmanager --licenses >/dev/null 2>&1 || true
 
-    - name: Install SDK packages
-      run: sdkmanager "platform-tools" "platforms;android-31" "build-tools;31.0.0"
+    - name: Install SDK 31 components
+      run: |
+        sdkmanager "platform-tools" "platforms;android-31" "build-tools;31.0.0"
 
-    - name: Show buildozer.spec
-      run: cat buildozer.spec
-
-    - name: Build Android APK
-      run: buildozer android debug --verbose
+    - name: Build APK
+      run: |
+        buildozer android debug --verbose
       timeout-minutes: 90
 
-    - name: List APK files
+    - name: Show APK
       if: always()
       run: |
-        find . -name "*.apk" -type f
-        ls -la bin/ 2>/dev/null || true
+        find . -name "*.apk"
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: android-apk
         path: bin/*.apk
-      if: success()
