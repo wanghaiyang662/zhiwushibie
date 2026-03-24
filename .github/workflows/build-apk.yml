@@ -33,10 +33,8 @@ jobs:
     - name: Cache Buildozer
       uses: actions/cache@v4
       with:
-        path: 
-          - ~/.buildozer
-          - ~/.gradle  # 新增：缓存 gradle 依赖，大幅减少重复下载
-          - ~/.android/cache
+        # 修复：path 改为单行字符串，避免 YAML 列表缩进错误
+        path: ~/.buildozer ~/.gradle ~/.android/cache
         # 全新缓存key v6，包含 gradle 缓存维度
         key: ${{ runner.os }}-buildozer-${{ hashFiles('**/buildozer.spec') }}-v6
         # 新增：缓存回退策略，提升缓存命中率
@@ -121,8 +119,6 @@ jobs:
         # 新增：增加构建日志输出，方便调试
         buildozer android debug --verbose
       timeout-minutes: 90  # 延长超时时间到90分钟，适配超大型项目
-      # 新增：失败时继续执行后续调试步骤
-      continue-on-error: false
       
     - name: Debug - List output files
       if: always()  # 无论构建成败都执行，方便排查问题
