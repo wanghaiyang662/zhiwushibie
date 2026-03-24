@@ -189,6 +189,14 @@ jobs:
           echo "=== $dir 内容 ==="
           ls -la "$dir" 2>/dev/null || echo "无法访问 $dir"
         done
+        echo "=== 特别查看enhancedquiz的bin目录 ==="
+        if [ -d ".buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz/bin" ]; then
+          echo "enhancedquiz bin目录存在，列出内容:"
+          ls -la .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz/bin
+        else
+          echo "enhancedquiz bin目录不存在，列出所有dists下的目录:"
+          ls -la .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/
+        fi
         
     - name: Find and copy APK to expected location
       run: |
@@ -197,23 +205,32 @@ jobs:
         # 首先尝试在典型的buildozer输出目录中查找
         APK_FILE=""
         
-        # 检查新架构的构建目录
-        for build_dir in .buildozer/android/platform/build*; do
-          if [ -d "$build_dir/dists" ]; then
-            for dist_dir in "$build_dir"/dists/*; do
-              if [ -d "$dist_dir" ] && [ -d "$dist_dir/bin" ]; then
-                echo "检查 $dist_dir/bin 目录"
-                ls -la "$dist_dir/bin" 2>/dev/null || echo "目录不存在或无权限"
-                APK_CANDIDATE=$(find "$dist_dir/bin" -name "*.apk" -type f | head -n1)
-                if [ -n "$APK_CANDIDATE" ] && [ -f "$APK_CANDIDATE" ]; then
-                  APK_FILE="$APK_CANDIDATE"
-                  echo "在 $dist_dir/bin 中找到APK: $APK_FILE"
-                  break 2
-                fi
-              fi
-            done
+        # 检查特定的dist目录，根据之前的日志我们知道应用名为enhancedquiz
+        if [ -d ".buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz/bin" ]; then
+          echo "检查 .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz/bin 目录"
+          ls -la .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz/bin
+          APK_CANDIDATE=$(find .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz/bin -name "*.apk" -type f | head -n1)
+          if [ -n "$APK_CANDIDATE" ] && [ -f "$APK_CANDIDATE" ]; then
+            APK_FILE="$APK_CANDIDATE"
+            echo "在enhancedquiz bin目录中找到APK: $APK_FILE"
           fi
-        done
+        fi
+        
+        # 如果在enhancedquiz目录没找到，尝试其他dist目录
+        if [ -z "$APK_FILE" ]; then
+          for dist_dir in .buildozer/android/platform/build*/dists/*; do
+            if [ -d "$dist_dir" ] && [ -d "$dist_dir/bin" ]; then
+              echo "检查 $dist_dir/bin 目录"
+              ls -la "$dist_dir/bin" 2>/dev/null || echo "目录不存在或无权限"
+              APK_CANDIDATE=$(find "$dist_dir/bin" -name "*.apk" -type f | head -n1)
+              if [ -n "$APK_CANDIDATE" ] && [ -f "$APK_CANDIDATE" ]; then
+                APK_FILE="$APK_CANDIDATE"
+                echo "在 $dist_dir/bin 中找到APK: $APK_FILE"
+                break
+              fi
+            fi
+          done
+        fi
         
         # 如果在标准目录没找到，尝试全局搜索
         if [ -z "$APK_FILE" ]; then
