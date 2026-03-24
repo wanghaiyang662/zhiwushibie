@@ -14,4 +14,5 @@ android.sdk = 30
 android.archs = armeabi-v7a,arm64-v8a
 android.accept_sdk_license = True
 p4a.branch = master
-orientation = Portrait
+# 修正：orientation 必须是小写 'portrait'（不是 'Portrait'）
+orientation = portrait
