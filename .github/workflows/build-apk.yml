@@ -3,60 +3,50 @@ on:
   push:
     branches: [ main ]
   workflow_dispatch:
-
 jobs:
   build:
     runs-on: ubuntu-22.04
     env:
       PIP_INDEX_URL: https://pypi.tuna.tsinghua.edu.cn/simple
       PIP_TRUSTED_HOST: pypi.tuna.tsinghua.edu.cn
-
+      # 强制指定NDK 25b，与配置文件匹配
+      ANDROID_NDK_HOME: /home/runner/.buildozer/android/platform/android-ndk-r25b
     steps:
     - uses: actions/checkout@v4
-
     - name: Set up Python 3.9
       uses: actions/setup-python@v5
       with:
         python-version: '3.9'
-
-    - name: Install dependencies
+        # 缓存Python依赖，加速构建
+        cache: 'pip'
+    - name: 安装Ubuntu底层编译依赖（补全缺失库）
       run: |
         sudo apt update -y
-        sudo apt install -y openjdk-17-jdk build-essential libffi-dev libssl-dev autoconf libtool zipalign
-
-    - name: Install Python
+        sudo apt install -y openjdk-17-jdk build-essential libffi-dev libssl-dev autoconf libtool zipalign \
+        libltdl-dev pkg-config zip unzip wget curl
+    - name: 安装Python构建工具
       run: |
         python -m pip install --upgrade pip
         pip install setuptools==65.5.0 wheel
         pip install Cython==0.29.36
         pip install buildozer==1.5.0
-
-    - name: 彻底摧毁 cryptography 编译（永不报错）
+    # 移除：删除cryptography空实现（改用正常编译方式）
+    - name: 缓存Buildozer构建文件（核心加速，避免重复下载SDK/NDK）
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.buildozer
+          ./.buildozer
+        key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer-apk.txt') }}
+        restore-keys: |
+          buildozer-${{ runner.os }}-
+    - name: Build APK（移除--no-clean，避免缓存冲突；开启详细日志）
       run: |
-        mkdir -p ~/.buildozer/android/platform/python-for-android/pythonforandroid/recipes/cryptography/
-        cat > ~/.buildozer/android/platform/python-for-android/pythonforandroid/recipes/cryptography/__init__.py << 'EOF'
-        from pythonforandroid.recipe import PythonRecipe
-        class CryptographyRecipe(PythonRecipe):
-            version = "36.0.2"
-            url = "https://pypi.org/packages/source/c/cryptography/cryptography-36.0.2.tar.gz"
-            depends = [("python3", "python3")]
-
-            def build_arch(self, arch):
-                # 空实现：完全不编译！
-                return
-
-            def install_python_package(self, arch):
-                # 不安装！
-                return
-        EOF
-
-    - name: Build APK
-      run: |
-        buildozer android debug --verbose --no-clean
-      timeout-minutes: 120
-
-    - name: Upload APK
+        buildozer android debug --verbose
+      timeout-minutes: 150 # 延长超时，适配复杂依赖编译
+    - name: 上传APK产物
       uses: actions/upload-artifact@v4
+      if: success() # 仅成功时上传
       with:
         name: android-apk
         path: bin/*.apk
