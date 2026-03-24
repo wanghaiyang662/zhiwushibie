@@ -9,7 +9,6 @@ jobs:
     env:
       PIP_INDEX_URL: https://pypi.tuna.tsinghua.edu.cn/simple
       PIP_TRUSTED_HOST: pypi.tuna.tsinghua.edu.cn
-      # 修正：NDK 版本从 r25b 改为 r23b
       ANDROID_NDK_HOME: /home/runner/.buildozer/android/platform/android-ndk-r23b
     steps:
       - uses: actions/checkout@v4
