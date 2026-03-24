@@ -10,6 +10,7 @@ jobs:
     env:
       PIP_INDEX_URL: https://pypi.tuna.tsinghua.edu.cn/simple
       PIP_TRUSTED_HOST: pypi.tuna.tsinghua.edu.cn
+      PIP_NO_CACHE_DIR: "off"
 
     steps:
     - uses: actions/checkout@v4
@@ -19,22 +20,29 @@ jobs:
       with:
         python-version: '3.9'
 
-    - name: Install Java 17 & dependencies
+    - name: Install system dependencies & Java 17
       run: |
-        sudo apt update
+        sudo apt update -y
         sudo apt install -y openjdk-17-jdk git wget unzip zip build-essential libffi-dev libssl-dev autoconf libtool zipalign libltdl-dev
+        sudo update-alternatives --set java /usr/lib/jvm/java-17-openjdk-amd64/bin/java
+        java -version
 
-    - name: Install Python packages
+    - name: Install Python dependencies (fixed versions)
       run: |
         python -m pip install --upgrade pip
         pip install setuptools==65.5.0 wheel setuptools-rust
         pip install Cython==0.29.36
         pip install buildozer==1.5.0
 
-    - name: Build APK
+    - name: Force use domestic p4a source (FIX 502 ERROR)
       run: |
-        buildozer android debug
-      timeout-minutes: 90
+        mkdir -p ~/.buildozer
+        echo "p4a.source = https://gitee.com/lewangdev/python-for-android.git" >> ~/.buildozer/config
+
+    - name: Build Android APK
+      run: |
+        buildozer android debug --verbose --no-clean
+      timeout-minutes: 120
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
