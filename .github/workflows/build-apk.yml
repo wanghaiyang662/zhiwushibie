@@ -86,7 +86,7 @@ jobs:
         mv temp_spec.txt buildozer.spec
         
     - name: Cache Buildozer
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.buildozer
         key: ${{ runner.os }}-buildozer-${{ hashFiles('**/buildozer.spec') }}
@@ -103,9 +103,11 @@ jobs:
         ls -la ./*.apk 2>/dev/null || find . -name "*.apk" -exec ls -la {} \;
         
     - name: Upload APK
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: success()
       with:
         name: apk-file
-        path: bin/*.apk
+        path: |
+          bin/*.apk
+          !bin/*unsigned.apk
         if-no-files-found: warn
