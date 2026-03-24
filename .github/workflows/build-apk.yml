@@ -33,17 +33,25 @@ jobs:
           path: ~/.buildozer
           key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
           restore-keys: buildozer-${{ runner.os }}-
-      - name: 安装Android SDK命令行工具
+      - name: 安装Android SDK命令行工具（修正嵌套目录问题）
         run: |
-          # 创建正确的嵌套目录结构
-          mkdir -p ~/.buildozer/android/platform/android-sdk/cmdline-tools/cmdline-tools
-          # 下载Android SDK命令行工具
+          # 创建单层目录（关键！不要创建两层）
+          mkdir -p $ANDROID_SDK_HOME/cmdline-tools
+          
+          # 下载并解压到单层目录
           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-          unzip commandlinetools-linux-9477386_latest.zip -d ~/.buildozer/android/platform/android-sdk/cmdline-tools/cmdline-tools
-          # 修复权限
-          chmod +x ~/.buildozer/android/platform/android-sdk/cmdline-tools/cmdline-tools/bin/*
-          # 安装必要的SDK组件（修复yes命令的Broken pipe问题）
-          (yes || true) | ~/.buildozer/android/platform/android-sdk/cmdline-tools/cmdline-tools/bin/sdkmanager "platform-tools" "platforms;android-31" "build-tools;34.0.0" "ndk;25.0.10325124" --sdk_root=$ANDROID_SDK_HOME
+          unzip commandlinetools-linux-9477386_latest.zip -d $ANDROID_SDK_HOME/cmdline-tools
+          
+          # 修复权限（指向正确的两层嵌套路径）
+          chmod +x $ANDROID_SDK_HOME/cmdline-tools/cmdline-tools/bin/*
+          
+          # 安装SDK组件（修复Broken pipe问题）
+          (yes || true) | $ANDROID_SDK_HOME/cmdline-tools/cmdline-tools/bin/sdkmanager \
+            "platform-tools" \
+            "platforms;android-31" \
+            "build-tools;34.0.0" \
+            "ndk;25.0.10325124" \
+            --sdk_root=$ANDROID_SDK_HOME
       - name: Build APK
         run: |
           buildozer android debug --verbose
