@@ -5,7 +5,7 @@ package.domain = org.example
 version = 1.0
 source.dir = .
 source.include_exts = py,png,jpg,kv,atlas,ttf
-requirements = python3,kivy==2.1.0,pillow,oss2,certifi,chardet,idna,urllib3,requests,crcmod,pycryptodome,aliyun-python-sdk-kms,aliyun-python-sdk-core,six,jmespath,cryptography,cffi,pycparser,charset_normalizer,pyjnius
+requirements = python3,kivy==2.1.0,pillow,oss2,certifi,chardet,idna,urllib3,requests,crcmod,pycryptodome,aliyun-python-sdk-kms,aliyun-python-sdk-core,six,jmespath,cryptography,cffi,pycparser,charset_normalizer,pyjnius,android
 android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
 android.api = 31
 android.minapi = 21
@@ -13,6 +13,10 @@ android.ndk = 25b
 android.ndk_api = 21
 android.archs = armeabi-v7a,arm64-v8a
 android.accept_sdk_license = True
+p4a.bootstrap = sdl2
 p4a.branch = master
 orientation = portrait
-android.gradle_dependencies = 'com.google.android.material:material:1.8.0'
+android.gradle_dependencies = com.google.android.material:material:1.8.0
+android.enable_androidx = True
+android.gradle_version = 7.4.2
+android.log_level = 2
