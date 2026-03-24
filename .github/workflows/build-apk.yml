@@ -201,6 +201,8 @@ jobs:
         fi
         echo "=== 查找所有可能包含APK的目录 ==="
         find .buildozer -type d -name "*dist*" -exec sh -c 'echo "Searching in: $1"; find "$1" -name "*.apk" -type f' _ {} \;
+        echo "=== 检查Gradle构建输出目录 ==="
+        find .buildozer -path "*/build/outputs/apk*" -type f -name "*.apk" -exec ls -la {} \;
         
     - name: Find and copy APK to expected location
       run: |
@@ -209,9 +211,21 @@ jobs:
         # 深度搜索策略
         APK_FILE=""
         
-        # 策略1: 在enhancedquiz目录的所有子目录中搜索APK
-        if [ -d ".buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz" ]; then
-          echo "在enhancedquiz目录及其子目录中搜索APK..."
+        # 策略1: 检查增强的路径 - enhancedquiz bin目录
+        ENHANCEDQUIZ_BIN=".buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz/bin"
+        if [ -d "$ENHANCEDQUIZ_BIN" ]; then
+          echo "检查 $ENHANCEDQUIZ_BIN 目录"
+          ls -la "$ENHANCEDQUIZ_BIN"
+          APK_CANDIDATE=$(find "$ENHANCEDQUIZ_BIN" -name "*.apk" -type f | head -n1)
+          if [ -n "$APK_CANDIDATE" ] && [ -f "$APK_CANDIDATE" ]; then
+            APK_FILE="$APK_CANDIDATE"
+            echo "在enhancedquiz bin目录中找到APK: $APK_FILE"
+          fi
+        fi
+        
+        # 策略2: 搜索enhancedquiz目录中的所有APK文件
+        if [ -z "$APK_FILE" ] && [ -d ".buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz" ]; then
+          echo "在enhancedquiz目录中搜索APK..."
           APK_CANDIDATE=$(find .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz -name "*.apk" -type f | head -n1)
           if [ -n "$APK_CANDIDATE" ] && [ -f "$APK_CANDIDATE" ]; then
             APK_FILE="$APK_CANDIDATE"
@@ -219,7 +233,7 @@ jobs:
           fi
         fi
         
-        # 策略2: 搜索所有dist目录中的APK文件
+        # 策略3: 搜索所有dist目录中的APK文件
         if [ -z "$APK_FILE" ]; then
           echo "在所有dist目录中搜索APK..."
           for dist_dir in .buildozer/android/platform/build*/dists/*; do
@@ -234,7 +248,17 @@ jobs:
           done
         fi
         
-        # 策略3: 在整个.buildozer目录中搜索
+        # 策略4: 搜索Gradle构建输出目录
+        if [ -z "$APK_FILE" ]; then
+          echo "在Gradle构建输出目录中搜索APK..."
+          GRADLE_OUTPUTS=$(find .buildozer -path "*/build/outputs/apk*" -type f -name "*.apk")
+          if [ -n "$GRADLE_OUTPUTS" ]; then
+            APK_FILE=$(echo "$GRADLE_OUTPUTS" | head -n1)
+            echo "在Gradle构建输出中找到APK: $APK_FILE"
+          fi
+        fi
+        
+        # 策略5: 在整个.buildozer目录中搜索
         if [ -z "$APK_FILE" ]; then
           echo "在整个.buildozer目录中搜索APK..."
           APK_FILE=$(find .buildozer -name "*.apk" -type f | head -n1)
@@ -243,7 +267,7 @@ jobs:
           fi
         fi
         
-        # 策略4: 全局搜索（最后手段）
+        # 策略6: 全局搜索（最后手段）
         if [ -z "$APK_FILE" ]; then
           echo "全局搜索APK文件..."
           APK_FILE=$(find . -name "*.apk" -type f | head -n1)
@@ -271,38 +295,21 @@ jobs:
           echo "错误: 未找到任何APK文件"
           echo "=== 详细诊断信息 ==="
           
+          # 检查构建日志中的APK相关信息
+          echo "=== 搜索构建日志中的APK相关信息 ==="
+          grep -i -A 10 -B 10 "apk\|assemble\|output\|final\|generated" build_full_log.txt | tail -50 || echo "未在构建日志中找到APK相关线索"
+          
+          # 检查是否有构建错误
+          echo "=== 检查构建日志中的错误信息 ==="
+          grep -i -A 5 -B 5 "error\|fail\|exception" build_full_log.txt | tail -30 || echo "未在构建日志中找到错误信息"
+          
           # 列出构建输出目录的详细结构
           echo "=== .buildozer目录结构 ==="
-          find .buildozer -type d -name "*" | sort
+          find .buildozer -type d | sort
           
-          # 搜索所有可能的APK构建位置
-          echo "=== 搜索可能的APK构建位置 ==="
-          POSSIBLE_DIRS=(
-            ".buildozer/android/platform/build*/dists/*"
-            ".buildozer/android/app/"
-            ".buildozer/apk/"
-            ".buildozer/android/platform/build*/build/outputs/apk/debug/"
-            ".buildozer/android/platform/build*/bin/"
-          )
-          
-          for dir_pattern in "${POSSIBLE_DIRS[@]}"; do
-            echo "检查模式: $dir_pattern"
-            for dir in $dir_pattern; do
-              if [ -d "$dir" ]; then
-                echo "  发现目录: $dir"
-                ls -la "$dir" 2>/dev/null || echo "    无法访问 $dir"
-                find "$dir" -name "*.apk" -type f -exec echo "    找到APK: {}" \;
-              fi
-            done
-          done
-          
-          # 尝试定位构建输出中的APK
-          echo "=== 搜索构建过程中的APK文件 ==="
-          find .buildozer -name "*.apk" -type f -exec ls -la {} \;
-          
-          # 检查构建日志中的APK位置线索
-          echo "=== 搜索构建日志中的APK相关信息 ==="
-          grep -i "apk\|output\|final\|assemble" build_full_log.txt | tail -20 || echo "未在构建日志中找到APK相关线索"
+          # 检查构建过程中的APK构建状态
+          echo "=== 检查构建日志中的APK构建过程 ==="
+          grep -i -A 20 -B 5 "building\|compiling\|packaging\|signing" build_full_log.txt | tail -100 || echo "未在构建日志中找到APK构建过程"
           
           exit 1
         fi
