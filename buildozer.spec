@@ -28,9 +28,9 @@ android.skip_update = False
 # 关键：自动接受 SDK 许可（CI/CD 环境必须）
 android.accept_sdk_license = True
 
-# Python for Android 配置：使用官方稳定 Release 版本 2023.10.13
-# 放弃了不稳定的 master 开发版，这个是和 Buildozer 1.5.0 配套的官方稳定版
-p4a.commit = 2023.10.13
+# Python for Android 配置：改回 master 分支，彻底解决 tag 找不到的问题
+# 我们已经补上了 libltdl-dev，现在 master 分支也可以正常编译 libffi 了
+p4a.branch = master
 # 关键：增加构建超时时间（适配复杂依赖）
 p4a.timeout = 1800
 
