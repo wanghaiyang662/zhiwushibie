@@ -10,7 +10,6 @@ jobs:
     env:
       PIP_INDEX_URL: https://pypi.tuna.tsinghua.edu.cn/simple
       PIP_TRUSTED_HOST: pypi.tuna.tsinghua.edu.cn
-      PIP_NO_CACHE_DIR: "off"
 
     steps:
     - uses: actions/checkout@v4
@@ -20,28 +19,26 @@ jobs:
       with:
         python-version: '3.9'
 
-    - name: Install system dependencies & Java 17
+    - name: Install system + Rust + Java
       run: |
         sudo apt update -y
-        sudo apt install -y openjdk-17-jdk git wget unzip zip build-essential libffi-dev libssl-dev autoconf libtool zipalign libltdl-dev
-        sudo update-alternatives --set java /usr/lib/jvm/java-17-openjdk-amd64/bin/java
-        java -version
+        sudo apt install -y openjdk-17-jdk build-essential libffi-dev libssl-dev autoconf libtool zipalign libltdl-dev
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        source $HOME/.cargo/env
+        rustc --version
 
-    - name: Install Python dependencies (fixed versions)
+    - name: Install full Python dependencies (fix cryptography forever)
       run: |
         python -m pip install --upgrade pip
-        pip install setuptools==65.5.0 wheel setuptools-rust
+        pip install setuptools==65.5.0 wheel
+        pip install setuptools-rust
+        pip install cryptography==36.0.2
         pip install Cython==0.29.36
         pip install buildozer==1.5.0
 
-    - name: Force use domestic p4a source (FIX 502 ERROR)
+    - name: Build APK
       run: |
-        mkdir -p ~/.buildozer
-        echo "p4a.source = https://gitee.com/lewangdev/python-for-android.git" >> ~/.buildozer/config
-
-    - name: Build Android APK
-      run: |
-        buildozer android debug --verbose --no-clean
+        buildozer android debug --verbose
       timeout-minutes: 120
 
     - name: Upload APK
