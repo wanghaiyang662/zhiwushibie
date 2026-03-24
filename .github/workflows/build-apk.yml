@@ -1,329 +1,114 @@
-name: Build Kivy App for Android
+name: Build APK
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main ]
 
 jobs:
-  build-android:
+  build-apk:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v3
     
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v4
       with:
         python-version: '3.9'
         
     - name: Install system dependencies
       run: |
         sudo apt update
-        sudo apt install -y python3 build-essential libffi-dev python3-dev python3-venv
-        sudo apt install -y openjdk-8-jdk
-        sudo apt install -y android-tools-adb
-        sudo apt install -y gcc-multilib g++-multilib
-        sudo apt install -y libc6-dev-i386
-        # 适配Ubuntu 24.04，使用正确的包名
-        sudo apt install -y lib32stdc++-13-dev
-        sudo apt install -y wget unzip git
+        sudo apt install -y python3 python3-pip python3-setuptools openjdk-8-jdk
+        sudo apt install -y libffi-dev libssl-dev zlib1g-dev autoconf automake libtool
         
-    - name: Configure pip to use Tsinghua source
+    - name: Install Buildozer
       run: |
-        pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
-        pip config set global.trusted-host pypi.tuna.tsinghua.edu.cn
+        pip3 install --upgrade cython
+        pip3 install buildozer kivy==2.1.0
         
-    - name: Install Buildozer and dependencies
+    - name: Initialize Buildozer
       run: |
-        python -m pip install --upgrade pip setuptools cython
-        pip install buildozer
-        # 使用存在的版本号
-        pip install python-for-android==2024.1.21
+        buildozer init || true
         
-    - name: Verify buildozer.spec exists and show its content
+    - name: Update buildozer.spec
       run: |
-        if [ ! -f "buildozer.spec" ]; then
-          echo "错误: 没有找到 buildozer.spec 文件。请确保你的项目中有此配置文件。"
-          ls -la
-          exit 1
-        else
-          echo "=== buildozer.spec 内容 ==="
-          cat buildozer.spec
-          echo "==========================="
-        fi
+        cat > buildozer.spec << EOF
+[app]
+
+# Application versioning
+version = 1.0
+package.name = enhancedquiz
+package.domain = org.example
+
+# Source code where the main file exists
+source.dir = .
+source.include_exts = py,png,jpg,kv,atlas,ttf,mp3,wav,ogg,jpeg,gif,bmp
+
+# Application requirements - 精简依赖列表
+requirements = python3,kivy==2.1.0,pillow,requests,pyjnius
+
+# Buildozer environment
+android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
+android.api = 30
+android.minapi = 21
+android.ndk = 23c
+android.sdk = 30
+android.archs = arm64-v8a,armeabi-v7a
+
+# Build settings
+android.accept_sdk_license = True
+p4a.branch = develop
+
+# Orientation - 必须是小写
+orientation = portrait
+
+# Title of application
+title = 永红林场动植物识别学习系统
+
+# Icon and splash
+icon.filename = %(source.dir)s/icon.png
+splash.filename = %(source.dir)s/splash.png
+
+[buildozer]
+
+# Log level
+log_level = 2
+
+# Build directory
+build_dir = .buildozer
+
+# Clean build
+clean_build = True
+
+# Verbose logging for debugging
+verbose = True
+EOF
         
-    - name: Clean previous builds and create directories
-      run: |
-        rm -rf .buildozer
-        mkdir -p .buildozer/android/platform
-        
-    - name: Download and setup Android NDK r23c (known compatible version)
-      run: |
-        # 确保目录存在
-        mkdir -p $HOME/.buildozer/android/platform
-        cd $HOME/.buildozer/android/platform
-        
-        if [ ! -d "android-ndk-r23c" ]; then
-          echo "正在下载Android NDK r23c (已知兼容版本)..."
-          wget -q https://dl.google.com/android/repository/android-ndk-r23c-linux.zip
-          unzip -q android-ndk-r23c-linux.zip
-          echo "NDK r23c 下载完成"
-        else
-          echo "NDK r23c 已存在"
-        fi
-        
-        # 验证clang编译器是否存在
-        NDK_CLANG_PATH="$HOME/.buildozer/android/platform/android-ndk-r23c/toolchains/llvm/prebuilt/linux-x86_64/bin"
-        if [ -d "$NDK_CLANG_PATH" ]; then
-          echo "NDK Clang路径存在: $NDK_CLANG_PATH"
-          ls -la "$NDK_CLANG_PATH" | grep clang
-        else
-          echo "错误: NDK Clang路径不存在: $NDK_CLANG_PATH"
-          find "$HOME/.buildozer/android/platform/android-ndk-r23c" -name "clang" -type f
-          exit 1
-        fi
-        
-    - name: Create buildozer.spec if it doesn't exist
-      run: |
-        if [ ! -f "buildozer.spec" ]; then
-          echo "创建默认 buildozer.spec 文件..."
-          buildozer init
-          # 修改spec文件以适应我们的需求
-          sed -i 's/^\(package.name = \).*$/\1myapp/' buildozer.spec
-          sed -i 's/^\(package.domain = \).*$/\1org.test/' buildozer.spec
-          sed -i 's/^\(source.dir = \).*$/\1./' buildozer.spec
-          sed -i 's/^\(title = \).*$/\1永红林场动植物识别学习系统/' buildozer.spec
-          sed -i 's/^\(version = \).*$/\10.1/' buildozer.spec
-          sed -i 's/^\(requirements = \).*$/\1python3,kivy/' buildozer.spec
-          sed -i 's/^\(android.ndk_path = \).*$/\1\/home\/runner\/.buildozer\/android\/platform\/android-ndk-r23c/' buildozer.spec
-          sed -i 's/^\(android.sdk_path = \).*$/\1\/home\/runner\/.buildozer\/android\/platform\/android-sdk/' buildozer.spec
-        fi
-        
-        # 确保spec文件配置正确
-        sed -i '/^android.archs =/d' buildozer.spec
-        echo "android.archs = arm64-v8a, armeabi-v7a" >> buildozer.spec
-        
-        # 显示修改后的spec文件
-        echo "=== 修改后的 buildozer.spec ==="
-        cat buildozer.spec
-        
-    - name: Create basic project structure if needed
-      run: |
-        # 检查是否存在main.py，如果不存在则创建一个简单的示例
-        if [ ! -f "main.py" ]; then
-          echo "创建示例 main.py 文件..."
-          # 使用printf代替cat heredoc以避免YAML解析问题
-          printf '%s\n' \
-            'from kivy.app import App' \
-            'from kivy.uix.label import Label' \
-            '' \
-            'class MyApp(App):' \
-            '    def build(self):' \
-            "        return Label(text='永红林场动植物识别学习系统')" \
-            '' \
-            'MyApp().run()' > main.py
-        fi
-        
-        # 检查是否存在图标文件，如果不存在则创建一个基本的
-        if [ ! -f "icon.png" ]; then
-          echo "创建示例图标文件..."
-          # 创建一个简单的1024x1024像素的PNG图标（使用base64编码的透明PNG）
-          echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" | base64 -d > icon.png
-        fi
-        
-        # 检查是否存在启动画面文件，如果不存在则创建一个基本的
-        if [ ! -f "splash.png" ]; then
-          echo "创建示例启动画面文件..."
-          # 创建一个简单的PNG文件
-          echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" | base64 -d > splash.png
-        fi
-        
-        ls -la
-        
-    - name: Build Android APK with maximum logging
-      run: |
-        # 设置环境变量
-        export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
-        export ANDROID_SDK_ROOT=$ANDROID_HOME
-        export ANDROID_NDK_ROOT=$HOME/.buildozer/android/platform/android-ndk-r23c
-        
-        # 验证环境变量
-        echo "ANDROID_HOME: $ANDROID_HOME"
-        echo "ANDROID_NDK_ROOT: $ANDROID_NDK_ROOT"
-        
-        # 验证NDK中的clang编译器
-        if [ ! -f "$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" ]; then
-          echo "错误: 找不到clang编译器，正在搜索NDK中的clang文件..."
-          find "$ANDROID_NDK_ROOT" -name "clang" -type f
-          exit 1
-        fi
-        
-        # 开始构建
-        echo "开始构建 APK..."
-        timeout 90m buildozer android debug 2>&1 | tee build_full_log.txt || {
-          echo "构建失败或超时，显示最后的错误信息..."
-          echo "=== 最后100行日志 ==="
-          tail -100 build_full_log.txt
-          
-          echo "=== 搜索关键错误信息 ==="
-          grep -i -A 5 -B 5 "error\|failed\|exception\|traceback\|clang" build_full_log.txt || echo "未找到明显的错误信息"
-          
-          echo "=== 搜索编译错误 ==="
-          grep -i -A 10 -B 10 "compilation\|linking\|make\|cmake" build_full_log.txt | grep -i -A 5 -B 5 "error\|fail" || echo "未找到编译错误"
-          
-          # 上传完整日志以便分析
-          echo "构建失败，保存完整日志用于调试"
-          exit 1
-        }
-        
-    - name: Debug - List all files after build
-      run: |
-        echo "=== 构建完成后列出项目根目录文件 ==="
-        ls -la
-        echo "=== 深度搜索整个工作区的APK文件 ==="
-        find . -name "*.apk" -type f -exec ls -la {} \;
-        echo "=== 列出 .buildozer/android/platform/build*/dists/*/ 目录内容 ==="
-        find .buildozer/android/platform -path "*/dists/*" -type d | while read dir; do
-          if [ -d "$dir" ]; then
-            echo "=== $dir 内容 ==="
-            ls -la "$dir" 2>/dev/null
-          fi
-        done
-        echo "=== 深入检查enhancedquiz目录结构 ==="
-        if [ -d ".buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz" ]; then
-          echo "enhancedquiz目录存在，递归列出所有内容:"
-          find .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz -type f
-        else
-          echo "enhancedquiz目录不存在，列出所有dists子目录:"
-          ls -la .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/
-        fi
-        echo "=== 查找所有可能包含APK的目录 ==="
-        find .buildozer -type d -name "*dist*" -exec sh -c 'echo "Searching in: $1"; find "$1" -name "*.apk" -type f' _ {} \;
-        echo "=== 检查Gradle构建输出目录 ==="
-        find .buildozer -path "*/build/outputs/apk*" -type f -name "*.apk" -exec ls -la {} \;
-        
-    - name: Find and copy APK to expected location
-      run: |
-        echo "查找生成的 APK 文件..."
-        
-        # 深度搜索策略
-        APK_FILE=""
-        
-        # 策略1: 检查增强的路径 - enhancedquiz bin目录
-        ENHANCEDQUIZ_BIN=".buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz/bin"
-        if [ -d "$ENHANCEDQUIZ_BIN" ]; then
-          echo "检查 $ENHANCEDQUIZ_BIN 目录"
-          ls -la "$ENHANCEDQUIZ_BIN"
-          APK_CANDIDATE=$(find "$ENHANCEDQUIZ_BIN" -name "*.apk" -type f | head -n1)
-          if [ -n "$APK_CANDIDATE" ] && [ -f "$APK_CANDIDATE" ]; then
-            APK_FILE="$APK_CANDIDATE"
-            echo "在enhancedquiz bin目录中找到APK: $APK_FILE"
-          fi
-        fi
-        
-        # 策略2: 搜索enhancedquiz目录中的所有APK文件
-        if [ -z "$APK_FILE" ] && [ -d ".buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz" ]; then
-          echo "在enhancedquiz目录中搜索APK..."
-          APK_CANDIDATE=$(find .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz -name "*.apk" -type f | head -n1)
-          if [ -n "$APK_CANDIDATE" ] && [ -f "$APK_CANDIDATE" ]; then
-            APK_FILE="$APK_CANDIDATE"
-            echo "在enhancedquiz目录中找到APK: $APK_FILE"
-          fi
-        fi
-        
-        # 策略3: 搜索所有dist目录中的APK文件
-        if [ -z "$APK_FILE" ]; then
-          echo "在所有dist目录中搜索APK..."
-          for dist_dir in .buildozer/android/platform/build*/dists/*; do
-            if [ -d "$dist_dir" ]; then
-              APK_CANDIDATE=$(find "$dist_dir" -name "*.apk" -type f | head -n1)
-              if [ -n "$APK_CANDIDATE" ] && [ -f "$APK_CANDIDATE" ]; then
-                APK_FILE="$APK_CANDIDATE"
-                echo "在 $dist_dir 中找到APK: $APK_FILE"
-                break
-              fi
-            fi
-          done
-        fi
-        
-        # 策略4: 搜索Gradle构建输出目录
-        if [ -z "$APK_FILE" ]; then
-          echo "在Gradle构建输出目录中搜索APK..."
-          GRADLE_OUTPUTS=$(find .buildozer -path "*/build/outputs/apk*" -type f -name "*.apk")
-          if [ -n "$GRADLE_OUTPUTS" ]; then
-            APK_FILE=$(echo "$GRADLE_OUTPUTS" | head -n1)
-            echo "在Gradle构建输出中找到APK: $APK_FILE"
-          fi
-        fi
-        
-        # 策略5: 在整个.buildozer目录中搜索
-        if [ -z "$APK_FILE" ]; then
-          echo "在整个.buildozer目录中搜索APK..."
-          APK_FILE=$(find .buildozer -name "*.apk" -type f | head -n1)
-          if [ -n "$APK_FILE" ] && [ -f "$APK_FILE" ]; then
-            echo "在.buildozer目录中找到APK: $APK_FILE"
-          fi
-        fi
-        
-        # 策略6: 全局搜索（最后手段）
-        if [ -z "$APK_FILE" ]; then
-          echo "全局搜索APK文件..."
-          APK_FILE=$(find . -name "*.apk" -type f | head -n1)
-          if [ -n "$APK_FILE" ] && [ -f "$APK_FILE" ]; then
-            echo "全局搜索找到APK: $APK_FILE"
-          fi
-        fi
-        
-        # 检查是否找到了APK
-        if [ -n "$APK_FILE" ] && [ -f "$APK_FILE" ]; then
-          echo "找到APK文件: $APK_FILE"
-          echo "APK文件详细信息:"
-          ls -la "$APK_FILE"
-          echo "APK文件大小:"
-          du -h "$APK_FILE"
-          
-          # 创建bin目录
-          mkdir -p bin
-          
-          # 复制APK文件到bin目录
-          cp "$APK_FILE" bin/
-          echo "已复制APK到 bin/ 目录"
-          ls -la bin/
-        else
-          echo "错误: 未找到任何APK文件"
-          echo "=== 详细诊断信息 ==="
-          
-          # 检查构建日志中的APK相关信息
-          echo "=== 搜索构建日志中的APK相关信息 ==="
-          grep -i -A 10 -B 10 "apk\|assemble\|output\|final\|generated" build_full_log.txt | tail -50 || echo "未在构建日志中找到APK相关线索"
-          
-          # 检查是否有构建错误
-          echo "=== 检查构建日志中的错误信息 ==="
-          grep -i -A 5 -B 5 "error\|fail\|exception" build_full_log.txt | tail -30 || echo "未在构建日志中找到错误信息"
-          
-          # 列出构建输出目录的详细结构
-          echo "=== .buildozer目录结构 ==="
-          find .buildozer -type d | sort
-          
-          # 检查构建过程中的APK构建状态
-          echo "=== 检查构建日志中的APK构建过程 ==="
-          grep -i -A 20 -B 5 "building\|compiling\|packaging\|signing" build_full_log.txt | tail -100 || echo "未在构建日志中找到APK构建过程"
-          
-          exit 1
-        fi
-        
-    - name: Upload build logs
-      uses: actions/upload-artifact@v4
+    - name: Cache Buildozer
+      uses: actions/cache@v3
       with:
-        name: build-logs
-        path: build_full_log.txt
-      if: ${{ always() }} # 无论成功还是失败都上传日志
+        path: ~/.buildozer
+        key: ${{ runner.os }}-buildozer-${{ hashFiles('**/buildozer.spec') }}
+        
+    - name: Build APK
+      run: |
+        export PATH=$PATH:~/.local/bin
+        buildozer android debug
+        
+    - name: List output files
+      run: |
+        find . -name "*.apk" -type f
+        ls -la bin/ 2>/dev/null || echo "bin/ directory does not exist"
+        ls -la ./*.apk 2>/dev/null || find . -name "*.apk" -exec ls -la {} \;
         
     - name: Upload APK
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v3
+      if: success()
       with:
-        name: android-apk
+        name: apk-file
         path: bin/*.apk
-      if: ${{ success() }}
+        if-no-files-found: warn
