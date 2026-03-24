@@ -33,7 +33,7 @@ jobs:
       - name: 配置Gradle国内镜像（关键！）
         run: |
           mkdir -p ~/.gradle
-          cat > ~/.gradle/init.gradle <<'EOF'
+          cat > ~/.gradle/init.gradle <<EOF
 allprojects {
     buildscript {
         repositories {
