@@ -46,18 +46,20 @@ jobs:
           echo "找到 buildozer.spec 文件，继续构建过程。"
         fi
         
-    - name: Show buildozer.spec content
-      run: cat buildozer.spec
-      
-    - name: Initialize Android SDK and NDK
+    - name: Clean previous builds
       run: |
-        # 创建必要的目录
-        mkdir -p ~/.buildozer/android/platform
-        # 验证Java安装
-        java -version
-        javac -version
+        rm -rf .buildozer
+        mkdir -p .buildozer/android/platform
         
-    - name: Build Android APK with verbose logging
+    - name: Download and setup Android NDK
+      run: |
+        cd .buildozer/android/platform
+        if [ ! -d "android-ndk-r25b" ]; then
+          wget https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
+          unzip android-ndk-r25b-linux.zip
+        fi
+        
+    - name: Build Android APK
       run: |
         buildozer android debug --verbose
         
