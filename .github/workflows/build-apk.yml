@@ -25,6 +25,9 @@ jobs:
         sudo apt install -y openjdk-8-jdk
         sudo apt install -y android-tools-adb
         sudo apt install -y gcc-multilib g++-multilib
+        sudo apt install -y libc6-dev-i386
+        sudo apt install -y lib32z1-dev lib32stdc++6-dev
+        sudo apt install -y wget unzip git
         
     - name: Configure pip to use Tsinghua source
       run: |
@@ -35,15 +38,18 @@ jobs:
       run: |
         python -m pip install --upgrade pip setuptools cython
         pip install buildozer
-        pip install python-for-android
+        pip install python-for-android==2023.12.23
         
-    - name: Check for buildozer.spec
+    - name: Verify buildozer.spec exists and show its content
       run: |
         if [ ! -f "buildozer.spec" ]; then
-          echo "警告: 没有找到 buildozer.spec 文件。请确保你的项目中有此配置文件。"
+          echo "错误: 没有找到 buildozer.spec 文件。请确保你的项目中有此配置文件。"
+          ls -la
           exit 1
         else
-          echo "找到 buildozer.spec 文件，继续构建过程。"
+          echo "=== buildozer.spec 内容 ==="
+          cat buildozer.spec
+          echo "==========================="
         fi
         
     - name: Clean previous builds
@@ -51,20 +57,42 @@ jobs:
         rm -rf .buildozer
         mkdir -p .buildozer/android/platform
         
-    - name: Download and setup Android NDK
+    - name: Setup Android SDK and NDK
       run: |
-        cd .buildozer/android/platform
+        # 设置环境变量
+        export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
+        export ANDROID_SDK_ROOT=$ANDROID_HOME
+        export ANDROID_NDK_ROOT=$HOME/.buildozer/android/platform/android-ndk-r25b
+        export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools:$ANDROID_NDK_ROOT
+        
+        # 创建必要目录
+        mkdir -p $ANDROID_HOME
+        mkdir -p $ANDROID_NDK_ROOT
+        
+        # 下载并解压NDK
+        cd $HOME/.buildozer/android/platform
         if [ ! -d "android-ndk-r25b" ]; then
-          wget https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
-          unzip android-ndk-r25b-linux.zip
+          echo "正在下载Android NDK r25b..."
+          wget -q https://dl.google.com/android/repository/android-ndk-r25b-linux.zip
+          unzip -q android-ndk-r25b-linux.zip
+          echo "NDK r25b 下载完成"
+        else
+          echo "NDK r25b 已存在"
         fi
         
-    - name: Build Android APK
-      run: |
-        buildozer android debug --verbose
+        # 验证NDK
+        if [ -d "$ANDROID_NDK_ROOT" ]; then
+          echo "NDK 路径: $ANDROID_NDK_ROOT"
+          ls -la $ANDROID_NDK_ROOT | head -10
+        else
+          echo "错误: NDK 目录不存在: $ANDROID_NDK_ROOT"
+          exit 1
+        fi
         
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: android-apk
-        path: bin/*.apk
+    - name: Create basic project structure if needed
+      run: |
+        # 检查是否存在main.py，如果不存在则创建一个简单的示例
+        if [ ! -f "main.py" ]; then
+          echo "创建示例 main.py 文件..."
+          cat > main.py << EOF
+from kiv
