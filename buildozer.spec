@@ -17,3 +17,5 @@ android.accept_sdk_license = True
 p4a.branch = master
 orientation = portrait
 android.gradle_dependencies = 'com.google.android.material:material:1.8.0'
+# 修正：添加 android.sdk_path 配置
+android.sdk_path = ~/.buildozer/android/platform/android-sdk
