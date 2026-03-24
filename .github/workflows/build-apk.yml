@@ -10,7 +10,6 @@ jobs:
       PIP_INDEX_URL: https://pypi.tuna.tsinghua.edu.cn/simple
       PIP_TRUSTED_HOST: pypi.tuna.tsinghua.edu.cn
       ANDROID_SDK_HOME: /home/runner/.buildozer/android/platform/android-sdk
-      # 关键修正：移除 ANDROID_NDK_HOME，让 Buildozer 自己下载 NDK
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python 3.9
@@ -42,13 +41,16 @@ jobs:
           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
           unzip commandlinetools-linux-9477386_latest.zip -d $ANDROID_SDK_HOME/cmdline-tools
           
-          # 仅给 sdkmanager 添加执行权限（避免通配符错误）
-          chmod +x $ANDROID_SDK_HOME/cmdline-tools/cmdline-tools/bin/sdkmanager
+          # 确保SDK根目录存在
+          mkdir -p $ANDROID_SDK_HOME
           
-          # 第一步：自动接受所有许可协议（关键！）
+          # 配置环境变量
+          export ANDROID_HOME=$ANDROID_SDK_HOME
+          
+          # 第一步：自动接受所有许可协议
           (echo y; echo y; echo y; echo y; echo y) | $ANDROID_SDK_HOME/cmdline-tools/cmdline-tools/bin/sdkmanager --licenses --sdk_root=$ANDROID_SDK_HOME || true
           
-          # 第二步：安装必要组件（不安装 NDK！让 Buildozer 自己下载）
+          # 第二步：安装必要组件
           $ANDROID_SDK_HOME/cmdline-tools/cmdline-tools/bin/sdkmanager \
             "platform-tools" \
             "platforms;android-31" \
@@ -57,7 +59,7 @@ jobs:
       - name: Build APK
         run: |
           buildozer android debug --verbose
-        timeout-minutes: 180  # 增加超时时间（NDK 下载需要时间）
+        timeout-minutes: 180
       - name: 上传APK产物
         uses: actions/upload-artifact@v4
         if: success()
