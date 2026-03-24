@@ -68,7 +68,7 @@ jobs:
         export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools:$ANDROID_NDK_ROOT
         
         # 创建必要目录
-        mkdir -p $ANDROID_HOME
+        mkdir -p $HOME/.buildozer/android/platform
         mkdir -p $ANDROID_NDK_ROOT
         
         # 下载并解压NDK
@@ -153,15 +153,29 @@ jobs:
           exit 1
         }
         
-    - name: Find APK files
+    - name: Find and copy APK to expected location
       run: |
         echo "查找生成的 APK 文件..."
-        find . -name "*.apk" -type f
-        if [ -f "bin/*.apk" ]; then
+        APK_FILES=$(find . -name "*.apk" -type f)
+        if [ -n "$APK_FILES" ]; then
+          echo "找到以下APK文件:"
+          echo "$APK_FILES"
+          
+          # 创建bin目录
+          mkdir -p bin
+          
+          # 将所有找到的APK文件复制到bin目录
+          echo "$APK_FILES" | while read apk_file; do
+            if [ -f "$apk_file" ]; then
+              cp "$apk_file" bin/
+              echo "已复制 $apk_file 到 bin/ 目录"
+            fi
+          done
+          
           ls -la bin/
         else
-          echo "在 bin/ 目录中未找到 APK 文件"
-          find . -name "*.apk" -exec ls -la {} \;
+          echo "未找到任何APK文件"
+          exit 1
         fi
         
     - name: Upload build logs
