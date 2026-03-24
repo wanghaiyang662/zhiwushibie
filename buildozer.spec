@@ -9,7 +9,6 @@ requirements = python3,kivy==2.1.0,pillow,oss2,certifi,chardet,idna,urllib3,requ
 android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
 android.api = 31
 android.minapi = 21
-# 关键修正：使用 Buildozer 能识别的 NDK 版本标识
 android.ndk = 25b
 android.ndk_api = 21
 android.sdk = 31
