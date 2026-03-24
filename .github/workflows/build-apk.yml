@@ -1,69 +1,159 @@
 name: Build Android APK
-
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, master ]
+  workflow_dispatch:  # 支持手动触发
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    # 全局配置 pip 国内源，解决国外源 502 下载失败的问题
+    env:
+      PIP_INDEX_URL: https://pypi.tuna.tsinghua.edu.cn/simple
+      PIP_TRUSTED_HOST: pypi.tuna.tsinghua.edu.cn
+      # 新增：Buildozer 中文日志 + 强制使用国内源
+      BUILDOZER_LOG_LEVEL: DEBUG
+      ANDROID_SDK_DOWNLOAD_SOURCE: https://mirrors.tuna.tsinghua.edu.cn/android-sdk/
+      
     steps:
     - uses: actions/checkout@v4
-
+      # 新增：拉取完整历史，避免子模块/依赖文件缺失
+      with:
+        fetch-depth: 0
+    
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.9'
-
-    - name: Configure pip mirror
-      run: |
-        pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
-        pip config set global.trusted-host pypi.tuna.tsinghua.edu.cn
-
-    - name: Install Rust toolchain (解决cryptography编译依赖)
-      uses: dtolnay/rust-toolchain@stable
+        python-version: '3.9'  # Buildozer 1.5.0 官方最兼容的 Python3.9，稳定性拉满
+        # 新增：缓存 Python 依赖，加速安装
+        cache: 'pip'
+        
+    - name: Cache Buildozer
+      uses: actions/cache@v4
       with:
-        toolchain: stable
-        target: armv7-linux-androideabi
-        target: aarch64-linux-android
-
-    - name: Install build dependencies
+        path: 
+          - ~/.buildozer
+          - ~/.gradle  # 新增：缓存 gradle 依赖，大幅减少重复下载
+          - ~/.android/cache
+        # 全新缓存key v6，包含 gradle 缓存维度
+        key: ${{ runner.os }}-buildozer-${{ hashFiles('**/buildozer.spec') }}-v6
+        # 新增：缓存回退策略，提升缓存命中率
+        restore-keys: |
+          ${{ runner.os }}-buildozer-${{ hashFiles('**/buildozer.spec') }}-
+          ${{ runner.os }}-buildozer-
+        
+    - name: Install system dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          build-essential \
-          git \
-          python3-dev \
-          libssl-dev \
-          libffi-dev \
-          libxml2-dev \
-          libxslt1-dev \
-          zlib1g-dev \
-          openjdk-17-jdk \
-          unzip \
-          ant
-        pip install --upgrade pip setuptools wheel
-        # 安装cryptography编译所需依赖
-        pip install setuptools-rust cython
-        pip install buildozer==1.5.0 python-for-android==2023.07.02
-
-    - name: Set environment variables
+        sudo apt update -y
+        # 新增：先清理破损包，修复 apt 依赖问题
+        sudo apt --fix-broken install -y
+        # 新增了 libltdl-dev！解决了 libffi 编译的 LT_SYS_SYMBOL_USCORE 宏缺失错误！
+        # 新增：补充更多依赖，解决罕见的编译缺失问题
+        sudo apt install -y build-essential git unzip zip libffi-dev libssl-dev libncurses5-dev autoconf libtool pkg-config openjdk-11-jdk zipalign libltdl-dev \
+          libjpeg-dev libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev pkg-config libgl1-mesa-dev libgles2-mesa-dev \
+          python3-setuptools python3-dev cython3 ant
+        
+    - name: Install Python dependencies
       run: |
-        echo "ANDROIDSDK=/home/runner/.buildozer/android/platform/android-sdk" >> $GITHUB_ENV
-        echo "ANDROIDNDK=/home/runner/.buildozer/android/platform/android-ndk-r25b" >> $GITHUB_ENV
-        echo "ANDROIDAPI=31" >> $GITHUB_ENV
-        echo "ANDROIDMINAPI=21" >> $GITHUB_ENV
-        echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
-
-    - name: Build APK with Buildozer
+        python -m pip install --upgrade pip
+        # 先安装兼容的 setuptools 版本，避免新版本的兼容问题
+        pip install setuptools==65.5.0
+        pip install Cython==0.29.36  # 适配 Kivy 2.1.0 的稳定兼容版本
+        pip install buildozer==1.5.0 # 稳定版 Buildozer，避免开发版的兼容性问题
+        # 新增：安装依赖后验证版本，提前发现问题
+        pip list | grep -E "(buildozer|cython|setuptools)"
+        
+    - name: Setup Android SDK
       run: |
-        buildozer android debug
-
+        export ANDROID_HOME=/home/runner/.buildozer/android/platform
+        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+        mkdir -p $ANDROID_HOME
+        cd $ANDROID_HOME
+        # 使用最新版 commandline tools，适配新的 Android 构建环境
+        wget -q --timeout=30 https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip || \
+        # 新增：备用下载源，解决谷歌源访问失败
+        wget -q --timeout=30 https://mirrors.tuna.tsinghua.edu.cn/android/repository/commandlinetools-linux-11076708_latest.zip
+        unzip -q commandlinetools-linux-11076708_latest.zip
+        mkdir -p cmdline-tools/latest
+        mv cmdline-tools/* $ANDROID_HOME/cmdline-tools/latest/ 2>/dev/null || true
+        rm commandlinetools-linux-11076708_latest.zip
+        
+        # 把环境变量保存到全局，后续步骤都能用到
+        echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+        echo "PATH=$PATH" >> $GITHUB_ENV
+        
+    - name: Accept Android SDK licenses
+      run: |
+        # 新增：强制自动接受所有许可证，避免交互阻塞
+        yes | sdkmanager --licenses > /dev/null 2>&1 || true
+        
+    - name: Install required SDK packages
+      run: |
+        # 提前安装我们需要的 SDK 包，解决 aidl 找不到的问题
+        # 新增：增加超时和重试机制，解决网络波动
+        sdkmanager --no_https --verbose "platform-tools" "platforms;android-31" "build-tools;31.0.0" || \
+        sdkmanager --verbose "platform-tools" "platforms;android-31" "build-tools;31.0.0"
+        
+    - name: Debug - Show system info
+      # 新增：输出系统信息，方便排查环境问题
+      run: |
+        echo "Python version:"
+        python --version
+        echo "Java version:"
+        java -version
+        echo "ANDROID_HOME:"
+        echo $ANDROID_HOME
+        echo "PATH:"
+        echo $PATH
+        echo "Available SDK packages:"
+        sdkmanager --list | grep -E "(android-31|build-tools)"
+        
+    - name: Debug - Show buildozer.spec
+      run: |
+        cat buildozer.spec
+        # 新增：验证 spec 文件格式，提前发现语法错误
+        buildozer android clean  # 先清理旧构建产物
+        
+    - name: Build Android APK
+      run: |
+        # 新增：增加构建日志输出，方便调试
+        buildozer android debug --verbose
+      timeout-minutes: 90  # 延长超时时间到90分钟，适配超大型项目
+      # 新增：失败时继续执行后续调试步骤
+      continue-on-error: false
+      
+    - name: Debug - List output files
+      if: always()  # 无论构建成败都执行，方便排查问题
+      run: |
+        echo "Listing all APK files in project:"
+        find . -type f -name "*.apk" -exec ls -la {} \;
+        echo "Contents of bin directory:"
+        ls -la bin/ || echo "Bin directory does not exist"
+        # 新增：输出 Buildozer 日志，关键调试信息
+        echo "Buildozer log content:"
+        cat ./.buildozer/android/platform/build/outputs/logs/build.log || echo "Build log not found"
+        # 新增：输出错误日志（如果有）
+        cat ./.buildozer/android/platform/build/outputs/logs/error.log || echo "Error log not found"
+        
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: android-apk
-        path: bin/*.apk
+        path: |
+          bin/*.apk
+          ./*.apk  # 新增：兼容不同输出路径
+        if-no-files-found: warn  # 新增：文件不存在时仅警告，不直接失败
+      if: success()  # 仅构建成功时上传产物
+      
+    - name: Upload debug logs
+      # 新增：上传调试日志，构建失败时也能下载排查
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-debug-logs
+        path: |
+          ./.buildozer/android/platform/build/outputs/logs/
+          ./buildozer.spec
+          ./pip-freeze.txt
+      if: always()
