@@ -111,8 +111,7 @@ jobs:
     - name: Debug - Show buildozer.spec
       run: |
         cat buildozer.spec
-        # 新增：验证 spec 文件格式，提前发现语法错误
-        buildozer android clean  # 先清理旧构建产物
+        # 修复：移除 buildozer android clean，避免 p4a 未克隆时报错
         
     - name: Build Android APK
       run: |
