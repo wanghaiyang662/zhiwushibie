@@ -37,10 +37,14 @@ jobs:
         pip install buildozer
         pip install python-for-android
         
-    - name: Initialize buildozer if needed
+    - name: Check for buildozer.spec
       run: |
         if [ ! -f "buildozer.spec" ]; then
-          buildozer init
+          echo "警告: 没有找到 buildozer.spec 文件。请确保你的项目中有此配置文件。"
+          echo "如果没有，请先在本地运行 'buildozer init' 生成配置文件，然后根据需要修改。"
+          exit 1
+        else
+          echo "找到 buildozer.spec 文件，继续构建过程。"
         fi
         
     - name: Build Android APK
