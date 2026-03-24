@@ -9,7 +9,6 @@ jobs:
     env:
       PIP_INDEX_URL: https://pypi.tuna.tsinghua.edu.cn/simple
       PIP_TRUSTED_HOST: pypi.tuna.tsinghua.edu.cn
-      # 修正：NDK 版本从 r23b 改为 r25b
       ANDROID_NDK_HOME: /home/runner/.buildozer/android/platform/android-ndk-r25b
     steps:
       - uses: actions/checkout@v4
@@ -33,6 +32,10 @@ jobs:
           path: ~/.buildozer
           key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
           restore-keys: buildozer-${{ runner.os }}-
+      - name: 安装所有必要的Android SDK组件
+        run: |
+          # 确保安装正确的SDK组件
+          sdkmanager --install "platform-tools" "platforms;android-31" "build-tools;34.0.0" "ndk;25.0.10325124"
       - name: Build APK
         run: |
           buildozer android debug --verbose
