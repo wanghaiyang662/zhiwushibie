@@ -1,29 +1,17 @@
 [app]
-title = 永红林场植物识别学习系统
+title = 永红林场动植物识别学习系统
 package.name = enhancedquiz
 package.domain = org.example
+version = 1.0
 source.dir = .
-source.exclude = .git
-version = 0.1
-requirements = python3, kivy, android
-orientation = portrait
-osx.python_version = 3.9
-osx.kivy_version = 2.1.0
-android.api = 34
-android.minapi = 24
-android.sdk = 34
+source.include_exts = py,png,jpg,kv,atlas,ttf
+requirements = python3,kivy==2.1.0,pillow,oss2,certifi,chardet,idna,urllib3,requests,crcmod,pycryptodome,aliyun-python-sdk-kms,aliyun-python-sdk-core,six,jmespath,cryptography,cffi,pycparser,charset_normalizer,pyjnius
+android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
+android.api = 31
+android.minapi = 21
 android.ndk = 23b
-android.ndk_version = 23b
-android.arch = armeabi-v7a
-android.gradle_dependencies = 'com.google.firebase:firebase-analytics:21.3.0'
-android.add_src_files = assets/
-android.permissions = INTERNET, ACCESS_NETWORK_STATE
-android.gradle_dependencies = 'com.google.firebase:firebase-analytics:21.3.0'
-
-# 国内网络优化
-p4a.source_dir = /opt/buildozer/p4a
-p4a.source_dir = /opt/buildozer/p4a
-p4a.source_dir = /opt/buildozer/p4a
-p4a.source_dir = /opt/buildozer/p4a
-
-
+android.sdk = 30
+android.archs = armeabi-v7a,arm64-v8a
+android.accept_sdk_license = True
+p4a.branch = master
+orientation = Portrait
