@@ -54,15 +54,17 @@ jobs:
           echo "==========================="
         fi
         
-    - name: Clean previous builds
+    - name: Clean previous builds and create directories
       run: |
         rm -rf .buildozer
         mkdir -p .buildozer/android/platform
         
     - name: Download and setup Android NDK r23c (known compatible version)
       run: |
-        # 使用NDK r23c，这是一个已知兼容的版本
+        # 确保目录存在
+        mkdir -p $HOME/.buildozer/android/platform
         cd $HOME/.buildozer/android/platform
+        
         if [ ! -d "android-ndk-r23c" ]; then
           echo "正在下载Android NDK r23c (已知兼容版本)..."
           wget -q https://dl.google.com/android/repository/android-ndk-r23c-linux.zip
