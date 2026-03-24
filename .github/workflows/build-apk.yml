@@ -94,5 +94,84 @@ jobs:
         # 检查是否存在main.py，如果不存在则创建一个简单的示例
         if [ ! -f "main.py" ]; then
           echo "创建示例 main.py 文件..."
-          cat > main.py << EOF
-from kiv
+          cat > main.py << 'EOF'
+from kivy.app import App
+from kivy.uix.label import Label
+
+class MyApp(App):
+    def build(self):
+        return Label(text='永红林场动植物识别学习系统')
+
+MyApp().run()
+EOF
+        fi
+        
+        # 检查是否存在图标文件，如果不存在则创建一个基本的
+        if [ ! -f "icon.png" ]; then
+          echo "创建示例图标文件..."
+          # 创建一个简单的1024x1024像素的PNG图标（使用base64编码的透明PNG）
+          echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" | base64 -d > icon.png
+        fi
+        
+        # 检查是否存在启动画面文件，如果不存在则创建一个基本的
+        if [ ! -f "splash.png" ]; then
+          echo "创建示例启动画面文件..."
+          # 创建一个简单的PNG文件
+          echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" | base64 -d > splash.png
+        fi
+        
+        ls -la
+        
+    - name: Build Android APK with maximum logging
+      run: |
+        # 设置环境变量
+        export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
+        export ANDROID_SDK_ROOT=$ANDROID_HOME
+        export ANDROID_NDK_ROOT=$HOME/.buildozer/android/platform/android-ndk-r25b
+        
+        # 验证环境变量
+        echo "ANDROID_HOME: $ANDROID_HOME"
+        echo "ANDROID_NDK_ROOT: $ANDROID_NDK_ROOT"
+        
+        # 开始构建
+        echo "开始构建 APK..."
+        timeout 60m buildozer android debug 2>&1 | tee build_full_log.txt || {
+          echo "构建失败或超时，显示最后的错误信息..."
+          echo "=== 最后100行日志 ==="
+          tail -100 build_full_log.txt
+          
+          echo "=== 搜索关键错误信息 ==="
+          grep -i -A 5 -B 5 "error\|failed\|exception\|traceback" build_full_log.txt || echo "未找到明显的错误信息"
+          
+          echo "=== 搜索编译错误 ==="
+          grep -i -A 10 -B 10 "compilation\|linking\|make\|cmake" build_full_log.txt | grep -i -A 5 -B 5 "error\|fail" || echo "未找到编译错误"
+          
+          # 上传完整日志以便分析
+          echo "构建失败，保存完整日志用于调试"
+          exit 1
+        }
+        
+    - name: Find APK files
+      run: |
+        echo "查找生成的 APK 文件..."
+        find . -name "*.apk" -type f
+        if [ -f "bin/*.apk" ]; then
+          ls -la bin/
+        else
+          echo "在 bin/ 目录中未找到 APK 文件"
+          find . -name "*.apk" -exec ls -la {} \;
+        fi
+        
+    - name: Upload build logs
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-logs
+        path: build_full_log.txt
+      if: always() # 无论成功还是失败都上传日志
+        
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-apk
+        path: bin/*.apk
+      if: success()
