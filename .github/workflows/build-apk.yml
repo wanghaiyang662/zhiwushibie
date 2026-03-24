@@ -9,8 +9,8 @@ jobs:
     env:
       PIP_INDEX_URL: https://pypi.tuna.tsinghua.edu.cn/simple
       PIP_TRUSTED_HOST: pypi.tuna.tsinghua.edu.cn
-      ANDROID_NDK_HOME: /home/runner/.buildozer/android/platform/android-ndk-r25b
       ANDROID_SDK_HOME: /home/runner/.buildozer/android/platform/android-sdk
+      # 关键修正：移除 ANDROID_NDK_HOME，让 Buildozer 自己下载 NDK
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python 3.9
@@ -33,29 +33,31 @@ jobs:
           path: ~/.buildozer
           key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
           restore-keys: buildozer-${{ runner.os }}-
-      - name: 安装Android SDK命令行工具（修正嵌套目录问题）
+      - name: 安装Android SDK命令行工具（关键修正）
         run: |
-          # 创建单层目录（关键！不要创建两层）
+          # 创建单层目录
           mkdir -p $ANDROID_SDK_HOME/cmdline-tools
           
-          # 下载并解压到单层目录
+          # 下载并解压
           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
           unzip commandlinetools-linux-9477386_latest.zip -d $ANDROID_SDK_HOME/cmdline-tools
           
-          # 修复权限（指向正确的两层嵌套路径）
-          chmod +x $ANDROID_SDK_HOME/cmdline-tools/cmdline-tools/bin/*
+          # 仅给 sdkmanager 添加执行权限（避免通配符错误）
+          chmod +x $ANDROID_SDK_HOME/cmdline-tools/cmdline-tools/bin/sdkmanager
           
-          # 安装SDK组件（修复Broken pipe问题）
-          (yes || true) | $ANDROID_SDK_HOME/cmdline-tools/cmdline-tools/bin/sdkmanager \
+          # 第一步：自动接受所有许可协议（关键！）
+          (echo y; echo y; echo y; echo y; echo y) | $ANDROID_SDK_HOME/cmdline-tools/cmdline-tools/bin/sdkmanager --licenses --sdk_root=$ANDROID_SDK_HOME || true
+          
+          # 第二步：安装必要组件（不安装 NDK！让 Buildozer 自己下载）
+          $ANDROID_SDK_HOME/cmdline-tools/cmdline-tools/bin/sdkmanager \
             "platform-tools" \
             "platforms;android-31" \
             "build-tools;34.0.0" \
-            "ndk;25.0.10325124" \
             --sdk_root=$ANDROID_SDK_HOME
       - name: Build APK
         run: |
           buildozer android debug --verbose
-        timeout-minutes: 150
+        timeout-minutes: 180  # 增加超时时间（NDK 下载需要时间）
       - name: 上传APK产物
         uses: actions/upload-artifact@v4
         if: success()
