@@ -182,72 +182,77 @@ jobs:
       run: |
         echo "=== 构建完成后列出项目根目录文件 ==="
         ls -la
-        echo "=== 搜索整个工作区的APK文件 ==="
+        echo "=== 深度搜索整个工作区的APK文件 ==="
         find . -name "*.apk" -type f -exec ls -la {} \;
-        echo "=== 列出 .buildozer/android/platform/build*/dists/*/bin 目录内容 ==="
-        find .buildozer/android/platform -path "*/dists/*/bin" -type d | while read dir; do
-          echo "=== $dir 内容 ==="
-          ls -la "$dir" 2>/dev/null || echo "无法访问 $dir"
+        echo "=== 列出 .buildozer/android/platform/build*/dists/*/ 目录内容 ==="
+        find .buildozer/android/platform -path "*/dists/*" -type d | while read dir; do
+          if [ -d "$dir" ]; then
+            echo "=== $dir 内容 ==="
+            ls -la "$dir" 2>/dev/null
+          fi
         done
-        echo "=== 特别查看enhancedquiz的bin目录 ==="
-        if [ -d ".buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz/bin" ]; then
-          echo "enhancedquiz bin目录存在，列出内容:"
-          ls -la .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz/bin
+        echo "=== 深入检查enhancedquiz目录结构 ==="
+        if [ -d ".buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz" ]; then
+          echo "enhancedquiz目录存在，递归列出所有内容:"
+          find .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz -type f
         else
-          echo "enhancedquiz bin目录不存在，列出所有dists下的目录:"
+          echo "enhancedquiz目录不存在，列出所有dists子目录:"
           ls -la .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/
-          echo "尝试创建bin目录并重新检查enhancedquiz目录结构:"
-          mkdir -p .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz/bin
-          ls -la .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz/
         fi
+        echo "=== 查找所有可能包含APK的目录 ==="
+        find .buildozer -type d -name "*dist*" -exec sh -c 'echo "Searching in: $1"; find "$1" -name "*.apk" -type f' _ {} \;
         
     - name: Find and copy APK to expected location
       run: |
         echo "查找生成的 APK 文件..."
         
-        # 首先检查增强的查找路径
+        # 深度搜索策略
         APK_FILE=""
         
-        # 检查增强的路径 - enhancedquiz bin目录
-        ENHANCEDQUIZ_BIN=".buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz/bin"
-        if [ -d "$ENHANCEDQUIZ_BIN" ]; then
-          echo "检查 $ENHANCEDQUIZ_BIN 目录"
-          ls -la "$ENHANCEDQUIZ_BIN"
-          APK_CANDIDATE=$(find "$ENHANCEDQUIZ_BIN" -name "*.apk" -type f | head -n1)
+        # 策略1: 在enhancedquiz目录的所有子目录中搜索APK
+        if [ -d ".buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz" ]; then
+          echo "在enhancedquiz目录及其子目录中搜索APK..."
+          APK_CANDIDATE=$(find .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz -name "*.apk" -type f | head -n1)
           if [ -n "$APK_CANDIDATE" ] && [ -f "$APK_CANDIDATE" ]; then
             APK_FILE="$APK_CANDIDATE"
-            echo "在enhancedquiz bin目录中找到APK: $APK_FILE"
-          else
-            echo "enhancedquiz bin目录中没有找到APK文件"
+            echo "在enhancedquiz目录中找到APK: $APK_FILE"
           fi
-        else
-          echo "enhancedquiz bin目录不存在"
         fi
         
-        # 如果在enhancedquiz目录没找到，尝试其他dist目录
+        # 策略2: 搜索所有dist目录中的APK文件
         if [ -z "$APK_FILE" ]; then
+          echo "在所有dist目录中搜索APK..."
           for dist_dir in .buildozer/android/platform/build*/dists/*; do
-            if [ -d "$dist_dir" ] && [ -d "$dist_dir/bin" ]; then
-              echo "检查 $dist_dir/bin 目录"
-              ls -la "$dist_dir/bin" 2>/dev/null || echo "目录不存在或无权限"
-              APK_CANDIDATE=$(find "$dist_dir/bin" -name "*.apk" -type f | head -n1)
+            if [ -d "$dist_dir" ]; then
+              APK_CANDIDATE=$(find "$dist_dir" -name "*.apk" -type f | head -n1)
               if [ -n "$APK_CANDIDATE" ] && [ -f "$APK_CANDIDATE" ]; then
                 APK_FILE="$APK_CANDIDATE"
-                echo "在 $dist_dir/bin 中找到APK: $APK_FILE"
+                echo "在 $dist_dir 中找到APK: $APK_FILE"
                 break
               fi
             fi
           done
         fi
         
-        # 如果在标准目录没找到，尝试全局搜索
+        # 策略3: 在整个.buildozer目录中搜索
         if [ -z "$APK_FILE" ]; then
+          echo "在整个.buildozer目录中搜索APK..."
+          APK_FILE=$(find .buildozer -name "*.apk" -type f | head -n1)
+          if [ -n "$APK_FILE" ] && [ -f "$APK_FILE" ]; then
+            echo "在.buildozer目录中找到APK: $APK_FILE"
+          fi
+        fi
+        
+        # 策略4: 全局搜索（最后手段）
+        if [ -z "$APK_FILE" ]; then
+          echo "全局搜索APK文件..."
           APK_FILE=$(find . -name "*.apk" -type f | head -n1)
           if [ -n "$APK_FILE" ] && [ -f "$APK_FILE" ]; then
             echo "全局搜索找到APK: $APK_FILE"
           fi
         fi
         
+        # 检查是否找到了APK
         if [ -n "$APK_FILE" ] && [ -f "$APK_FILE" ]; then
           echo "找到APK文件: $APK_FILE"
           echo "APK文件详细信息:"
@@ -264,20 +269,41 @@ jobs:
           ls -la bin/
         else
           echo "错误: 未找到任何APK文件"
-          echo "详细列出构建输出目录内容:"
-          if [ -d ".buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz" ]; then
-            echo "=== enhancedquiz 目录内容 ==="
-            find .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz -type f -name "*.apk" -exec ls -la {} \;
-            if [ $? -ne 0 ]; then
-              echo "在enhancedquiz目录下没有找到APK文件，列出该目录下所有文件:"
-              find .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/dists/enhancedquiz -type f
-            fi
-          else
-            echo "enhancedquiz目录不存在"
-          fi
+          echo "=== 详细诊断信息 ==="
           
-          echo "在整个buildozer目录下搜索APK文件:"
-          find .buildozer -type f -name "*.apk"
+          # 列出构建输出目录的详细结构
+          echo "=== .buildozer目录结构 ==="
+          find .buildozer -type d -name "*" | sort
+          
+          # 搜索所有可能的APK构建位置
+          echo "=== 搜索可能的APK构建位置 ==="
+          POSSIBLE_DIRS=(
+            ".buildozer/android/platform/build*/dists/*"
+            ".buildozer/android/app/"
+            ".buildozer/apk/"
+            ".buildozer/android/platform/build*/build/outputs/apk/debug/"
+            ".buildozer/android/platform/build*/bin/"
+          )
+          
+          for dir_pattern in "${POSSIBLE_DIRS[@]}"; do
+            echo "检查模式: $dir_pattern"
+            for dir in $dir_pattern; do
+              if [ -d "$dir" ]; then
+                echo "  发现目录: $dir"
+                ls -la "$dir" 2>/dev/null || echo "    无法访问 $dir"
+                find "$dir" -name "*.apk" -type f -exec echo "    找到APK: {}" \;
+              fi
+            done
+          done
+          
+          # 尝试定位构建输出中的APK
+          echo "=== 搜索构建过程中的APK文件 ==="
+          find .buildozer -name "*.apk" -type f -exec ls -la {} \;
+          
+          # 检查构建日志中的APK位置线索
+          echo "=== 搜索构建日志中的APK相关信息 ==="
+          grep -i "apk\|output\|final\|assemble" build_full_log.txt | tail -20 || echo "未在构建日志中找到APK相关线索"
+          
           exit 1
         fi
         
