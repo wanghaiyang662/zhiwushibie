@@ -24,12 +24,14 @@ jobs:
         sudo apt update
         sudo apt install -y python3 python3-pip python3-setuptools openjdk-8-jdk
         sudo apt install -y libffi-dev libssl-dev zlib1g-dev autoconf automake libtool git zip unzip patch
-        sudo apt install -y libglib2.0-dev libnsl-dev libtirpc-dev libandroid-sysv-semaphore-dev
+        sudo apt install -y libglib2.0-dev libnsl-dev libtirpc-dev
         sudo apt install -y build-essential libncursesw5-dev libreadline-dev libssl-dev
         sudo apt install -y libsqlite3-dev tk-dev libgdbm-dev libc6-dev libbz2-dev libexpat1-dev
         sudo apt install -y libxml2-dev libxmlsec1-dev cargo
         # 安装autoconf-archive解决LT_SYS_SYMBOL_USCORE问题
         sudo apt install -y autoconf-archive
+        # 安装其他可能需要的依赖
+        sudo apt install -y gettext libgettextpo-dev libgettextpo0
         
     - name: Install Buildozer and dependencies
       run: |
@@ -121,6 +123,8 @@ jobs:
           ~/.buildozer
           ~/.local/share/python-for-android
           ~/.local/share/cython
+          ~/.local/share/ffmpeg
+          ~/.local/share/git-cache
         key: ${{ runner.os }}-buildozer-${{ hashFiles('**/buildozer.spec', '**/requirements.txt') }}
         restore-keys: |
           ${{ runner.os }}-buildozer-
