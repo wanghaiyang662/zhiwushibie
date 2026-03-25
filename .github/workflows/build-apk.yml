@@ -28,7 +28,7 @@ jobs:
     - name: Install Buildozer and dependencies
       run: |
         pip3 install --upgrade cython
-        pip3 install buildozer kivy==2.1.0 pillow requests python-for-android==2023.11.29
+        pip3 install buildozer kivy==2.1.0 pillow requests python-for-android==2023.9.16
         
     - name: Create placeholder files
       run: |
