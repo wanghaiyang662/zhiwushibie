@@ -123,20 +123,14 @@ jobs:
         echo "ANDROID_NDK_ROOT=/usr/local/lib/android/sdk/ndk/27.3.13750724" >> $GITHUB_ENV
         echo "ANDROID_NDK=/usr/local/lib/android/sdk/ndk/27.3.13750724" >> $GITHUB_ENV
         
-    - name: Clean Buildozer
+    - name: Prepare Buildozer Platform
       run: |
         export PATH=$PATH:~/.local/bin
-        # 清理之前的构建
-        buildozer android clean
-        
-    - name: Update Buildozer
-      run: |
-        export PATH=$PATH:~/.local/bin
-        # 更新依赖
-        buildozer android update
+        # 初始化buildozer项目，这将确保所有必要的目录存在
+        buildozer android check
         
     - name: Build APK
-      timeout-minutes: 60  # 增加超时时间
+      timeout-minutes: 90  # 增加超时时间，因为首次构建可能需要很长时间
       run: |
         export PATH=$PATH:~/.local/bin
         # 设置NDK环境变量
