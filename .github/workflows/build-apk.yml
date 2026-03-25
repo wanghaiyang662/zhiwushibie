@@ -8,14 +8,14 @@ on:
 
 jobs:
   build-apk:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04  # 使用Ubuntu 20.04以确保兼容性
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
     
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v3
       with:
         python-version: '3.9'
         
@@ -31,8 +31,7 @@ jobs:
         # 安装autoconf-archive解决LT_SYS_SYMBOL_USCORE问题
         sudo apt install -y autoconf-archive
         # 安装其他可能需要的依赖
-        sudo apt install -y gettext libgettextpo-dev libgettextpo0
-        sudo apt install -y pkg-config
+        sudo apt install -y gettext libgettextpo-dev libgettextpo0 pkg-config
         
     - name: Install Buildozer and dependencies
       run: |
@@ -115,10 +114,10 @@ jobs:
         echo "clean_build = False" >> buildozer.spec
         echo "" >> buildozer.spec
         echo "# Verbose logging for debugging" >> buildozer.spec
-        echo "verbose = True" >> buildozer.spec
+        echo "verbose = False" >> buildozer.spec
         
     - name: Cache Buildozer
-      uses: actions/cache@v4
+      uses: actions/cache@v3
       with:
         path: |
           ~/.buildozer
@@ -136,12 +135,24 @@ jobs:
         # 初始化buildozer环境
         buildozer android update
         
+    - name: Fix libffi autoconf issue
+      run: |
+        # 修复libffi的autoconf问题
+        if [ -d "$HOME/.buildozer/android/platform/android-ndk-r25b" ]; then
+          echo "Found NDK directory, attempting to fix libffi issues..."
+          # 查找可能存在的libffi源码目录并修复
+          find $HOME/.buildozer -name "configure.ac" -path "*libffi*" 2>/dev/null | while read configure_ac; do
+            echo "Updating $configure_ac"
+            sed -i 's/LT_SYS_SYMBOL_USCORE/LTOBSOLETE_SHELLFNS/g' "$(dirname "$configure_ac")/acinclude.m4" 2>/dev/null || true
+          done
+        fi
+        
     - name: Build APK
       timeout-minutes: 120  # 增加超时时间，因为首次构建可能需要很长时间
       run: |
         export PATH=$PATH:~/.local/bin
-        # 执行构建，使用详细日志模式
-        buildozer android debug --verbose
+        # 执行构建
+        buildozer android debug
         
     - name: Find APK files
       run: |
@@ -153,7 +164,7 @@ jobs:
         find .buildozer/android/platform/build*/dists/*/ -name "*.apk" -type f -exec ls -la {} \; || echo "No APK found in build dist directories"
         
     - name: Upload APK
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v3
       if: success()
       with:
         name: apk-file
