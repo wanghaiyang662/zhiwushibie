@@ -28,7 +28,7 @@ jobs:
     - name: Install Buildozer and dependencies
       run: |
         pip3 install --upgrade cython
-        pip3 install buildozer kivy==2.1.0 pillow requests python-for-android
+        pip3 install buildozer kivy==2.1.0 pillow requests python-for-android==2023.11.29
         
     - name: Create placeholder files
       run: |
@@ -82,7 +82,7 @@ jobs:
         echo "" >> buildozer.spec
         echo "# Build settings" >> buildozer.spec
         echo "android.accept_sdk_license = True" >> buildozer.spec
-        echo "p4a.branch = develop" >> buildozer.spec
+        echo "android.ndk = 25b" >> buildozer.spec
         echo "" >> buildozer.spec
         echo "# Orientation" >> buildozer.spec
         echo "orientation = portrait" >> buildozer.spec
@@ -114,28 +114,10 @@ jobs:
         path: ~/.buildozer
         key: ${{ runner.os }}-buildozer-${{ hashFiles('**/buildozer.spec') }}
         
-    - name: Setup Android Environment
-      run: |
-        # 设置环境变量
-        echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> $GITHUB_ENV
-        echo "ANDROID_SDK_ROOT=/usr/local/lib/android/sdk" >> $GITHUB_ENV
-        echo "ANDROID_NDK_HOME=/usr/local/lib/android/sdk/ndk/27.3.13750724" >> $GITHUB_ENV
-        echo "ANDROID_NDK_ROOT=/usr/local/lib/android/sdk/ndk/27.3.13750724" >> $GITHUB_ENV
-        echo "ANDROID_NDK=/usr/local/lib/android/sdk/ndk/27.3.13750724" >> $GITHUB_ENV
-        
-    - name: Prepare Buildozer Platform
-      run: |
-        export PATH=$PATH:~/.local/bin
-        # 初始化buildozer，这将确保所有必要的目录存在
-        buildozer init 2>/dev/null || echo "Buildozer spec already exists"
-        
     - name: Build APK
       timeout-minutes: 90  # 增加超时时间，因为首次构建可能需要很长时间
       run: |
         export PATH=$PATH:~/.local/bin
-        # 设置NDK环境变量
-        export ANDROID_NDK_HOME="/usr/local/lib/android/sdk/ndk/27.3.13750724"
-        export ANDROID_NDK_ROOT="/usr/local/lib/android/sdk/ndk/27.3.13750724"
         # 执行构建
         buildozer android debug
         
