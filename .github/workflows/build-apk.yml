@@ -32,6 +32,7 @@ jobs:
         sudo apt install -y autoconf-archive
         # 安装其他可能需要的依赖
         sudo apt install -y gettext libgettextpo-dev libgettextpo0
+        sudo apt install -y pkg-config
         
     - name: Install Buildozer and dependencies
       run: |
@@ -114,7 +115,7 @@ jobs:
         echo "clean_build = False" >> buildozer.spec
         echo "" >> buildozer.spec
         echo "# Verbose logging for debugging" >> buildozer.spec
-        echo "verbose = False" >> buildozer.spec
+        echo "verbose = True" >> buildozer.spec
         
     - name: Cache Buildozer
       uses: actions/cache@v4
@@ -139,8 +140,8 @@ jobs:
       timeout-minutes: 120  # 增加超时时间，因为首次构建可能需要很长时间
       run: |
         export PATH=$PATH:~/.local/bin
-        # 执行构建
-        buildozer android debug
+        # 执行构建，使用详细日志模式
+        buildozer android debug --verbose
         
     - name: Find APK files
       run: |
