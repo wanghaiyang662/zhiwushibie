@@ -23,68 +23,104 @@ jobs:
       run: |
         sudo apt update
         sudo apt install -y python3 python3-pip python3-setuptools openjdk-8-jdk
-        sudo apt install -y libffi-dev libssl-dev zlib1g-dev autoconf automake libtool
+        sudo apt install -y libffi-dev libssl-dev zlib1g-dev autoconf automake libtool git zip unzip patch
         
     - name: Install Buildozer
       run: |
         pip3 install --upgrade cython
         pip3 install buildozer kivy==2.1.0
         
-    - name: Create buildozer.spec
+    - name: Create placeholder files
       run: |
-        # 创建临时的buildozer.spec文件
-        touch temp_spec.txt
-        echo "[app]" >> temp_spec.txt
-        echo "" >> temp_spec.txt
-        echo "# Application versioning" >> temp_spec.txt
-        echo "version = 1.0" >> temp_spec.txt
-        echo "package.name = enhancedquiz" >> temp_spec.txt
-        echo "package.domain = org.example" >> temp_spec.txt
-        echo "" >> temp_spec.txt
-        echo "# Source code where the main file exists" >> temp_spec.txt
-        echo "source.dir = ." >> temp_spec.txt
-        echo "source.include_exts = py,png,jpg,kv,atlas,ttf,mp3,wav,ogg,jpeg,gif,bmp" >> temp_spec.txt
-        echo "" >> temp_spec.txt
-        echo "# Application requirements - 精简依赖列表" >> temp_spec.txt
-        echo "requirements = python3,kivy==2.1.0,pillow,requests,pyjnius" >> temp_spec.txt
-        echo "" >> temp_spec.txt
-        echo "# Buildozer environment" >> temp_spec.txt
-        echo "android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE" >> temp_spec.txt
-        echo "android.api = 30" >> temp_spec.txt
-        echo "android.minapi = 21" >> temp_spec.txt
-        echo "# 使用系统提供的NDK 27.3" >> temp_spec.txt
-        echo "android.ndk_path = /usr/local/lib/android/sdk/ndk/27.3.13750724" >> temp_spec.txt
-        echo "android.sdk = 30" >> temp_spec.txt
-        echo "android.archs = arm64-v8a,armeabi-v7a" >> temp_spec.txt
-        echo "" >> temp_spec.txt
-        echo "# Build settings" >> temp_spec.txt
-        echo "android.accept_sdk_license = True" >> temp_spec.txt
-        echo "p4a.branch = develop" >> temp_spec.txt
-        echo "" >> temp_spec.txt
-        echo "# Orientation - 必须是小写" >> temp_spec.txt
-        echo "orientation = portrait" >> temp_spec.txt
-        echo "" >> temp_spec.txt
-        echo "# Title of application" >> temp_spec.txt
-        echo "title = 永红林场动植物识别学习系统" >> temp_spec.txt
-        echo "" >> temp_spec.txt
-        echo "# Icon and splash" >> temp_spec.txt
-        echo "icon.filename = %(source.dir)s/icon.png" >> temp_spec.txt
-        echo "splash.filename = %(source.dir)s/splash.png" >> temp_spec.txt
-        echo "" >> temp_spec.txt
-        echo "[buildozer]" >> temp_spec.txt
-        echo "" >> temp_spec.txt
-        echo "# Log level" >> temp_spec.txt
-        echo "log_level = 2" >> temp_spec.txt
-        echo "" >> temp_spec.txt
-        echo "# Build directory" >> temp_spec.txt
-        echo "build_dir = .buildozer" >> temp_spec.txt
-        echo "" >> temp_spec.txt
-        echo "# Clean build" >> temp_spec.txt
-        echo "clean_build = True" >> temp_spec.txt
-        echo "" >> temp_spec.txt
-        echo "# Verbose logging for debugging" >> temp_spec.txt
-        echo "verbose = True" >> temp_spec.txt
-        mv temp_spec.txt buildozer.spec
+        # 创建基本的main.py文件
+        cat > main.py << 'EOF'
+from kivy.app import App
+from kivy.uix.label import Label
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
+
+class MainApp(App):
+    def build(self):
+        layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        
+        title_label = Label(text='永红林场动植物识别学习系统', size_hint=(1, 0.2))
+        content_label = Label(text='欢迎使用动植物识别系统', size_hint=(1, 0.6))
+        button = Button(text='开始学习', size_hint=(1, 0.2))
+        
+        layout.add_widget(title_label)
+        layout.add_widget(content_label)
+        layout.add_widget(button)
+        
+        return layout
+
+MainApp().run()
+EOF
+        
+        # 创建占位符图标和启动画面
+        echo "Creating placeholder images..."
+        python3 -c "
+from PIL import Image
+# 创建占位符图标
+icon = Image.new('RGB', (512, 512), color='red')
+icon.save('icon.png')
+# 创建占位符启动画面
+splash = Image.new('RGB', (512, 512), color='blue')
+splash.save('splash.png')
+"
+        
+    - name: Prepare buildozer.spec
+      run: |
+        # 创建buildozer.spec文件
+        cat > buildozer.spec << EOF
+[app]
+
+# Application versioning
+version = 1.0
+package.name = enhancedquiz
+package.domain = org.example
+
+# Source code where the main file exists
+source.dir = .
+source.include_exts = py,png,jpg,kv,atlas,ttf,mp3,wav,ogg,jpeg,gif,bmp
+
+# Application requirements
+requirements = python3,kivy==2.1.0,pillow,requests
+
+# Buildozer environment
+android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
+android.api = 30
+android.minapi = 21
+android.ndk_api = 21
+android.archs = arm64-v8a
+
+# Build settings
+android.accept_sdk_license = True
+p4a.branch = develop
+
+# Orientation
+orientation = portrait
+
+# Title of application
+title = 永红林场动植物识别学习系统
+
+# Icon and splash
+icon.filename = %(source.dir)s/icon.png
+splash.filename = %(source.dir)s/splash.png
+
+[buildozer]
+
+# Log level
+log_level = 2
+
+# Build directory
+build_dir = .buildozer
+
+# Clean build
+clean_build = True
+
+# Verbose logging for debugging
+verbose = True
+EOF
         
     - name: Cache Buildozer
       uses: actions/cache@v4
@@ -92,24 +128,41 @@ jobs:
         path: ~/.buildozer
         key: ${{ runner.os }}-buildozer-${{ hashFiles('**/buildozer.spec') }}
         
-    - name: Build APK
+    - name: Setup Android Environment
+      run: |
+        # 设置环境变量
+        echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> $GITHUB_ENV
+        echo "ANDROID_SDK_ROOT=/usr/local/lib/android/sdk" >> $GITHUB_ENV
+        echo "ANDROID_NDK_HOME=/usr/local/lib/android/sdk/ndk/27.3.13750724" >> $GITHUB_ENV
+        echo "ANDROID_NDK_ROOT=/usr/local/lib/android/sdk/ndk/27.3.13750724" >> $GITHUB_ENV
+        echo "ANDROID_NDK=/usr/local/lib/android/sdk/ndk/27.3.13750724" >> $GITHUB_ENV
+        
+    - name: Initialize Buildozer
       run: |
         export PATH=$PATH:~/.local/bin
-        # 设置环境变量确保使用系统NDK
-        export ANDROID_HOME="/usr/local/lib/android/sdk"
-        export ANDROID_SDK_ROOT="/usr/local/lib/android/sdk"
+        # 初始化buildozer环境
+        buildozer android clean
+        # 预先下载依赖
+        buildozer android update
+        
+    - name: Build APK
+      timeout-minutes: 60  # 增加超时时间
+      run: |
+        export PATH=$PATH:~/.local/bin
+        # 设置NDK环境变量
         export ANDROID_NDK_HOME="/usr/local/lib/android/sdk/ndk/27.3.13750724"
         export ANDROID_NDK_ROOT="/usr/local/lib/android/sdk/ndk/27.3.13750724"
-        export ANDROID_NDK="/usr/local/lib/android/sdk/ndk/27.3.13750724"
-        # 清理可能存在的旧NDK
-        rm -rf ~/.buildozer/android/platform/android-ndk-*
+        # 执行构建
         buildozer android debug
         
-    - name: List output files
+    - name: Find APK files
       run: |
-        find . -name "*.apk" -type f
+        echo "Looking for APK files..."
+        find . -name "*.apk" -type f -exec ls -la {} \; || echo "No APK files found"
+        echo "Listing bin directory contents:"
         ls -la bin/ 2>/dev/null || echo "bin/ directory does not exist"
-        ls -la ./*.apk 2>/dev/null || find . -name "*.apk" -exec ls -la {} \;
+        echo "Checking build directories:"
+        find .buildozer/android/platform/build*/dists/*/ -name "*.apk" -type f -exec ls -la {} \; || echo "No APK found in build dist directories"
         
     - name: Upload APK
       uses: actions/upload-artifact@v4
@@ -117,6 +170,6 @@ jobs:
       with:
         name: apk-file
         path: |
-          bin/*.apk
-          !bin/*unsigned.apk
+          **/*.apk
+          !**/*unsigned.apk
         if-no-files-found: warn
