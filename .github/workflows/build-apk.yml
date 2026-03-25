@@ -33,26 +33,28 @@ jobs:
     - name: Create placeholder files
       run: |
         # 创建基本的main.py文件
-        echo "from kivy.app import App" > main.py
-        echo "from kivy.uix.label import Label" >> main.py
-        echo "from kivy.uix.boxlayout import BoxLayout" >> main.py
-        echo "from kivy.uix.button import Button" >> main.py
-        echo "" >> main.py
-        echo "class MainApp(App):" >> main.py
-        echo "    def build(self):" >> main.py
-        echo "        layout = BoxLayout(orientation='vertical', padding=10, spacing=10)" >> main.py
-        echo "" >> main.py
-        echo "        title_label = Label(text='永红林场动植物识别学习系统', size_hint=(1, 0.2))" >> main.py
-        echo "        content_label = Label(text='欢迎使用动植物识别系统', size_hint=(1, 0.6))" >> main.py
-        echo "        button = Button(text='开始学习', size_hint=(1, 0.2))" >> main.py
-        echo "" >> main.py
-        echo "        layout.add_widget(title_label)" >> main.py
-        echo "        layout.add_widget(content_label)" >> main.py
-        echo "        layout.add_widget(button)" >> main.py
-        echo "" >> main.py
-        echo "        return layout" >> main.py
-        echo "" >> main.py
-        echo "MainApp().run()" >> main.py
+        cat > main.py << 'EOF'
+from kivy.app import App
+from kivy.uix.label import Label
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
+
+class MainApp(App):
+    def build(self):
+        layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        
+        title_label = Label(text='永红林场动植物识别学习系统', size_hint=(1, 0.2))
+        content_label = Label(text='欢迎使用动植物识别系统', size_hint=(1, 0.6))
+        button = Button(text='开始学习', size_hint=(1, 0.2))
+        
+        layout.add_widget(title_label)
+        layout.add_widget(content_label)
+        layout.add_widget(button)
+        
+        return layout
+
+MainApp().run()
+EOF
         
         # 创建占位符图标和启动画面
         python3 -c "
@@ -67,54 +69,56 @@ splash.save('splash.png')
         
     - name: Prepare buildozer.spec
       run: |
-        echo "[app]" > buildozer.spec
-        echo "" >> buildozer.spec
-        echo "# Application versioning" >> buildozer.spec
-        echo "version = 1.0" >> buildozer.spec
-        echo "package.name = enhancedquiz" >> buildozer.spec
-        echo "package.domain = org.example" >> buildozer.spec
-        echo "" >> buildozer.spec
-        echo "# Source code where the main file exists" >> buildozer.spec
-        echo "source.dir = ." >> buildozer.spec
-        echo "source.include_exts = py,png,jpg,kv,atlas,ttf,mp3,wav,ogg,jpeg,gif,bmp" >> buildozer.spec
-        echo "" >> buildozer.spec
-        echo "# Application requirements" >> buildozer.spec
-        echo "requirements = python3,kivy==2.1.0,pillow,requests" >> buildozer.spec
-        echo "" >> buildozer.spec
-        echo "# Buildozer environment" >> buildozer.spec
-        echo "android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE" >> buildozer.spec
-        echo "android.api = 30" >> buildozer.spec
-        echo "android.minapi = 21" >> buildozer.spec
-        echo "android.ndk_api = 21" >> buildozer.spec
-        echo "android.archs = arm64-v8a" >> buildozer.spec
-        echo "" >> buildozer.spec
-        echo "# Build settings" >> buildozer.spec
-        echo "android.accept_sdk_license = True" >> buildozer.spec
-        echo "p4a.branch = develop" >> buildozer.spec
-        echo "" >> buildozer.spec
-        echo "# Orientation" >> buildozer.spec
-        echo "orientation = portrait" >> buildozer.spec
-        echo "" >> buildozer.spec
-        echo "# Title of application" >> buildozer.spec
-        echo "title = 永红林场动植物识别学习系统" >> buildozer.spec
-        echo "" >> buildozer.spec
-        echo "# Icon and splash" >> buildozer.spec
-        echo "icon.filename = %(source.dir)s/icon.png" >> buildozer.spec
-        echo "splash.filename = %(source.dir)s/splash.png" >> buildozer.spec
-        echo "" >> buildozer.spec
-        echo "[buildozer]" >> buildozer.spec
-        echo "" >> buildozer.spec
-        echo "# Log level" >> buildozer.spec
-        echo "log_level = 2" >> buildozer.spec
-        echo "" >> buildozer.spec
-        echo "# Build directory" >> buildozer.spec
-        echo "build_dir = .buildozer" >> buildozer.spec
-        echo "" >> buildozer.spec
-        echo "# Clean build" >> buildozer.spec
-        echo "clean_build = True" >> buildozer.spec
-        echo "" >> buildozer.spec
-        echo "# Verbose logging for debugging" >> buildozer.spec
-        echo "verbose = True" >> buildozer.spec
+        tee buildozer.spec > /dev/null << 'EOF'
+[app]
+
+# Application versioning
+version = 1.0
+package.name = enhancedquiz
+package.domain = org.example
+
+# Source code where the main file exists
+source.dir = .
+source.include_exts = py,png,jpg,kv,atlas,ttf,mp3,wav,ogg,jpeg,gif,bmp
+
+# Application requirements
+requirements = python3,kivy==2.1.0,pillow,requests
+
+# Buildozer environment
+android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
+android.api = 30
+android.minapi = 21
+android.ndk_api = 21
+android.archs = arm64-v8a
+
+# Build settings
+android.accept_sdk_license = True
+p4a.branch = develop
+
+# Orientation
+orientation = portrait
+
+# Title of application
+title = 永红林场动植物识别学习系统
+
+# Icon and splash
+icon.filename = %(source.dir)s/icon.png
+splash.filename = %(source.dir)s/splash.png
+
+[buildozer]
+
+# Log level
+log_level = 2
+
+# Build directory
+build_dir = .buildozer
+
+# Clean build
+clean_build = True
+
+# Verbose logging for debugging
+verbose = True
+EOF
         
     - name: Cache Buildozer
       uses: actions/cache@v4
