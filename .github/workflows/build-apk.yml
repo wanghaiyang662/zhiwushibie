@@ -25,10 +25,10 @@ jobs:
         sudo apt install -y python3 python3-pip python3-setuptools openjdk-8-jdk
         sudo apt install -y libffi-dev libssl-dev zlib1g-dev autoconf automake libtool git zip unzip patch
         
-    - name: Install Buildozer
+    - name: Install Buildozer and dependencies
       run: |
         pip3 install --upgrade cython
-        pip3 install buildozer kivy==2.1.0 pillow requests
+        pip3 install buildozer kivy==2.1.0 pillow requests python-for-android
         
     - name: Create placeholder files
       run: |
@@ -126,10 +126,10 @@ jobs:
     - name: Initialize Buildozer
       run: |
         export PATH=$PATH:~/.local/bin
-        # 初始化buildozer环境
+        # 确保buildozer环境正确初始化
+        buildozer init
+        # 清理之前的构建
         buildozer android clean
-        # 预先下载依赖
-        buildozer android update
         
     - name: Build APK
       timeout-minutes: 60  # 增加超时时间
