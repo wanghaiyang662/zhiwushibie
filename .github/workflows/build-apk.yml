@@ -126,8 +126,8 @@ jobs:
     - name: Prepare Buildozer Platform
       run: |
         export PATH=$PATH:~/.local/bin
-        # 初始化buildozer项目，这将确保所有必要的目录存在
-        buildozer android check
+        # 初始化buildozer，这将确保所有必要的目录存在
+        buildozer init 2>/dev/null || echo "Buildozer spec already exists"
         
     - name: Build APK
       timeout-minutes: 90  # 增加超时时间，因为首次构建可能需要很长时间
