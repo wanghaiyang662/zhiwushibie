@@ -33,7 +33,7 @@ jobs:
     - name: Create placeholder files
       run: |
         # 创建基本的main.py文件
-        cat > main.py << 'EOF'
+        cat > main.py << 'EOL'
 from kivy.app import App
 from kivy.uix.label import Label
 from kivy.uix.boxlayout import BoxLayout
@@ -54,7 +54,7 @@ class MainApp(App):
         return layout
 
 MainApp().run()
-EOF
+EOL
         
         # 创建占位符图标和启动画面
         echo "Creating placeholder images..."
@@ -71,7 +71,7 @@ splash.save('splash.png')
     - name: Prepare buildozer.spec
       run: |
         # 创建buildozer.spec文件
-        cat > buildozer.spec << EOF
+        cat > buildozer.spec << 'EOL'
 [app]
 
 # Application versioning
@@ -120,7 +120,7 @@ clean_build = True
 
 # Verbose logging for debugging
 verbose = True
-EOF
+EOL
         
     - name: Cache Buildozer
       uses: actions/cache@v4
