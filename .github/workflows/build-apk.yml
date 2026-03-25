@@ -33,8 +33,7 @@ jobs:
     - name: Create placeholder files
       run: |
         # 创建基本的main.py文件
-        touch main.py
-        echo "from kivy.app import App" >> main.py
+        echo "from kivy.app import App" > main.py
         echo "from kivy.uix.label import Label" >> main.py
         echo "from kivy.uix.boxlayout import BoxLayout" >> main.py
         echo "from kivy.uix.button import Button" >> main.py
@@ -56,20 +55,11 @@ jobs:
         echo "MainApp().run()" >> main.py
         
         # 创建占位符图标和启动画面
-        python3 -c "
-from PIL import Image
-# 创建占位符图标
-icon = Image.new('RGB', (512, 512), color='red')
-icon.save('icon.png')
-# 创建占位符启动画面
-splash = Image.new('RGB', (512, 512), color='blue')
-splash.save('splash.png')
-"
+        python3 -c 'from PIL import Image; icon = Image.new("RGB", (512, 512), color="red"); icon.save("icon.png"); splash = Image.new("RGB", (512, 512), color="blue"); splash.save("splash.png")'
         
     - name: Prepare buildozer.spec
       run: |
-        touch buildozer.spec
-        echo "[app]" >> buildozer.spec
+        echo "[app]" > buildozer.spec
         echo "" >> buildozer.spec
         echo "# Application versioning" >> buildozer.spec
         echo "version = 1.0" >> buildozer.spec
